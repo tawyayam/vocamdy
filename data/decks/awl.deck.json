@@ -1,0 +1,14 @@
+{
+  "id": "awl",
+  "name": "Academic Word List",
+  "file": "awl.csv",
+  "groupLabel": "Sublist",
+  "columns": {
+    "word": "word",
+    "definition": "definition",
+    "group": "sublist",
+    "pos": "part_of_speech",
+    "example": "example",
+    "arabic": "arabic_translation"
+  }
+}
