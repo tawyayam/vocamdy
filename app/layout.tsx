@@ -25,7 +25,7 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "VocabAmdy",
+  title: "Vocamdy",
   description: "Daily practice for the Academic Word List.",
 };
 
