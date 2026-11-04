@@ -422,7 +422,7 @@ describe("createExercise", () => {
     expect(exercise.answer).toBe(targetWord.word);
   });
 
-  it("falls back to type_definition for a meaning choice with no distractor", () => {
+  it("falls back to definition-to-headword typing for a meaning choice with no distractor", () => {
     const targetWord = makeWord({
       id: "test:target",
       order: 1,
@@ -443,6 +443,8 @@ describe("createExercise", () => {
       throw new Error("Expected type_definition.");
     }
 
+    expect(exercise.prompt).toBe(targetWord.definition);
+    expect(exercise.prompt).not.toBe(targetWord.arabic);
     expect(exercise.answer).toBe(targetWord.word);
   });
 

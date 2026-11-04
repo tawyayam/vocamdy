@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildTodayState, planMiniSession, splitIntoBatches } from "./planner";
+import {
+  buildTodayState,
+  planMiniSession,
+  planNewBatch,
+  splitIntoBatches,
+} from "./planner";
 import type { Activity, Deck, Progress, Settings, Stage, Word } from "./types";
 
 const studyDay = "2026-01-01";
@@ -249,5 +254,128 @@ describe("buildTodayState", () => {
     ]);
     expect(splitIntoBatches([], 5)).toEqual([]);
     expect(() => splitIntoBatches([1], 0)).toThrow("Batch size must be a positive integer.");
+  });
+});
+
+describe("planNewBatch", () => {
+  const candidates = Array.from({ length: 15 }, (_, index) =>
+    makeWord(`test:w${index + 1}`, index + 1),
+  );
+
+  function planResult(
+    introducedToday: number,
+    mode: "required" | "extra" = "required",
+  ) {
+    return planNewBatch({
+      candidates: candidates.slice(introducedToday),
+      introducedToday,
+      dailyNew: 10,
+      batchSize: 5,
+      mode,
+    });
+  }
+
+  function plan(introducedToday: number, mode: "required" | "extra" = "required") {
+    return planResult(introducedToday, mode).words.map((word) => word.id);
+  }
+
+  it("starts with a full batch", () => {
+    expect(plan(0)).toEqual([
+      "test:w1",
+      "test:w2",
+      "test:w3",
+      "test:w4",
+      "test:w5",
+    ]);
+    expect(planResult(0).isLastForDay).toBe(false);
+  });
+
+  it("resumes a half-finished batch with only its remaining words", () => {
+    expect(plan(2)).toEqual(["test:w3", "test:w4", "test:w5"]);
+    expect(planResult(2).isLastForDay).toBe(false);
+  });
+
+  it("starts the next full batch after a finished one", () => {
+    expect(plan(5)).toEqual([
+      "test:w6",
+      "test:w7",
+      "test:w8",
+      "test:w9",
+      "test:w10",
+    ]);
+  });
+
+  it("uses a smaller last batch", () => {
+    expect(plan(9)).toEqual(["test:w10"]);
+  });
+
+  it("stops when the daily target is reached", () => {
+    expect(plan(10)).toEqual([]);
+  });
+
+  it("takes one extra batch after the daily target", () => {
+    expect(plan(10, "extra")).toEqual([
+      "test:w11",
+      "test:w12",
+      "test:w13",
+      "test:w14",
+      "test:w15",
+    ]);
+    expect(planResult(10, "extra").isLastForDay).toBe(false);
+  });
+
+  it("marks the second full batch as the last batch of the day", () => {
+    expect(planResult(5).isLastForDay).toBe(true);
+  });
+
+  it("marks a batch as last when the daily target is below the batch size", () => {
+    const result = planNewBatch({
+      candidates,
+      introducedToday: 0,
+      dailyNew: 3,
+      batchSize: 5,
+    });
+
+    expect(result.words.map((word) => word.id)).toEqual([
+      "test:w1",
+      "test:w2",
+      "test:w3",
+    ]);
+    expect(result.isLastForDay).toBe(true);
+  });
+
+  it("marks a shortened last batch as the last batch of the day", () => {
+    const result = planNewBatch({
+      candidates: candidates.slice(9),
+      introducedToday: 9,
+      dailyNew: 10,
+      batchSize: 5,
+    });
+
+    expect(result.words.map((word) => word.id)).toEqual(["test:w10"]);
+    expect(result.isLastForDay).toBe(true);
+  });
+
+  it("never returns more candidates than are available", () => {
+    const short = planNewBatch({
+      candidates: candidates.slice(0, 3),
+      introducedToday: 0,
+      dailyNew: 10,
+      batchSize: 5,
+    });
+
+    expect(short.words).toHaveLength(3);
+    expect(short.isLastForDay).toBe(true);
+  });
+
+  it("rejects an invalid batch size", () => {
+    expect(() =>
+      planNewBatch({
+        candidates,
+        introducedToday: 0,
+        dailyNew: 10,
+        batchSize: 0,
+      }),
+    ).toThrow("Batch size must be a positive integer.");
   });
 });

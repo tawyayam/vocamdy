@@ -19,7 +19,23 @@ type TodayViewProps = {
   progress: Progress[];
   activities: Activity[];
   settings: Settings;
+  notice: string | null;
 };
+
+const NOTICE_MESSAGES: Record<string, string> = {
+  paused: "Today is paused. Clear your overdue reviews first.",
+  "deck-complete": "You have learned every word in this deck.",
+  complete: "You are all done for today.",
+  "no-new-words": "No new words are left for today.",
+};
+
+function getNoticeMessage(notice: string | null): string | null {
+  if (!notice) {
+    return null;
+  }
+
+  return NOTICE_MESSAGES[notice] ?? null;
+}
 
 function findLastActiveDay(
   activities: Activity[],
@@ -43,6 +59,7 @@ export function TodayView({
   progress,
   activities,
   settings,
+  notice,
 }: TodayViewProps) {
   const router = useRouter();
   const [studyDay, setStudyDay] = useState<string | null>(null);
@@ -118,8 +135,10 @@ export function TodayView({
 
   const hasAnswers =
     (activity?.answersCount ?? 0) > 0 ||
+    state.introducedToday > 0 ||
     (activity?.completed ?? null) !== null;
   const headline = welcomeBack ? "Welcome back." : "Ready for today's words?";
+  const noticeMessage = getNoticeMessage(notice);
 
   return (
     <div className="space-y-4">
@@ -132,6 +151,14 @@ export function TodayView({
           <p className="mt-2 text-muted">Let&apos;s pick up where you stopped.</p>
         ) : null}
       </header>
+      {noticeMessage ? (
+        <p
+          role="status"
+          className="rounded-xl border border-primary/20 bg-primary-soft px-4 py-3 text-sm text-ink"
+        >
+          {noticeMessage}
+        </p>
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
         <div className="space-y-4">
           <SessionCard

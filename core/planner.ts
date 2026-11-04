@@ -132,6 +132,67 @@ export function buildTodayState(input: PlannerInput): TodayState {
   };
 }
 
+export type NewBatchMode = "required" | "extra";
+
+export type NewBatchPlan = {
+  mode: NewBatchMode;
+  words: Word[];
+  isLastForDay: boolean;
+};
+
+export type NewBatchInput = {
+  candidates: readonly Word[];
+  introducedToday: number;
+  dailyNew: number;
+  batchSize: number;
+  mode?: NewBatchMode;
+};
+
+export function planNewBatch(input: NewBatchInput): NewBatchPlan {
+  const {
+    candidates,
+    introducedToday,
+    dailyNew,
+    batchSize,
+    mode = "required",
+  } = input;
+
+  if (!Number.isInteger(batchSize) || batchSize < 1) {
+    throw new Error("Batch size must be a positive integer.");
+  }
+
+  if (candidates.length === 0) {
+    return { mode, words: [], isLastForDay: false };
+  }
+
+  if (mode === "extra") {
+    return {
+      mode,
+      words: candidates.slice(0, Math.min(batchSize, candidates.length)),
+      isLastForDay: false,
+    };
+  }
+
+  const remainingDaily = Math.max(0, dailyNew - introducedToday);
+
+  if (remainingDaily === 0) {
+    return { mode, words: [], isLastForDay: false };
+  }
+
+  const batchProgress = introducedToday % batchSize;
+  const sizeInBatch =
+    batchProgress === 0 ? batchSize : batchSize - batchProgress;
+  const size = Math.min(sizeInBatch, remainingDaily, candidates.length);
+
+  return {
+    mode,
+    words: candidates.slice(0, size),
+    isLastForDay:
+      size > 0 &&
+      (introducedToday + size >= dailyNew || candidates.length <= size),
+  };
+}
+
 export function planMiniSession(state: TodayState, batchSize: number): MiniSession {
   const reviews = state.dueReviews.slice(0, MINI_REVIEW_LIMIT);
   const newWords =

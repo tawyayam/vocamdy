@@ -7,7 +7,14 @@ import { getUserSettings } from "@/db/settings";
 import { summarizeDeck } from "@/features/study/deck-summary";
 import { TodayView } from "@/features/study/components/today-view";
 
-export default async function TodayPage() {
+type TodayPageProps = {
+  searchParams: Promise<{ notice?: string | string[] }>;
+};
+
+export default async function TodayPage({ searchParams }: TodayPageProps) {
+  const params = await searchParams;
+  const notice =
+    typeof params.notice === "string" ? params.notice : null;
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getClaims();
 
@@ -49,6 +56,7 @@ export default async function TodayPage() {
       progress={progress}
       activities={activities}
       settings={settings}
+      notice={notice}
     />
   );
 }

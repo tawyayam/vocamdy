@@ -1,6 +1,7 @@
 import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 import type { TodayState } from "@/core/types";
+import { SHOW_MINI_SESSION } from "../flags";
 import { countLabel } from "../format";
 
 type SessionCardProps = {
@@ -17,7 +18,7 @@ const secondaryLinkClassName =
   "flex min-h-11 items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-primary/40 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 function MiniSessionLink({ miniCount }: { miniCount: number }) {
-  if (miniCount === 0) {
+  if (!SHOW_MINI_SESSION || miniCount === 0) {
     return null;
   }
 
