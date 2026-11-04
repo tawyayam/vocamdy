@@ -4,6 +4,7 @@ import {
   IBM_Plex_Sans_Arabic,
   Newsreader,
 } from "next/font/google";
+import { getTheme } from "@/features/theme/server";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -29,10 +30,13 @@ export const metadata: Metadata = {
   description: "Daily practice for the Academic Word List.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const theme = await getTheme();
+
   return (
     <html
       lang="en"
+      data-theme={theme}
       className={`${plexSans.variable} ${plexSansArabic.variable} ${newsreader.variable} h-full`}
     >
       <body className="flex min-h-full flex-col bg-paper text-ink antialiased">

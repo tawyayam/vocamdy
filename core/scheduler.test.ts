@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { answerReview, answerTouchOne, introduceWord } from "./scheduler";
+import {
+  answerReview,
+  answerTouchOne,
+  introduceWord,
+  isReviewDue,
+  isStaleAnswer,
+} from "./scheduler";
 import type { Progress, Stage } from "./types";
 
 function progress(stage: Stage, overrides: Partial<Progress> = {}): Progress {
@@ -77,6 +83,90 @@ describe("answerTouchOne", () => {
 
     expect(result?.stage).toBe(1);
     expect(result?.wrongCount).toBe(3);
+  });
+});
+
+describe("isStaleAnswer", () => {
+  it("rejects a review whose expected stage differs from the stored stage", () => {
+    expect(
+      isStaleAnswer({
+        kind: "review",
+        expectedStage: 2,
+        progress: progress(1),
+      }),
+    ).toBe(true);
+    expect(
+      isStaleAnswer({
+        kind: "review",
+        expectedStage: 2,
+        progress: progress(2),
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects a review when no progress row exists", () => {
+    expect(
+      isStaleAnswer({
+        kind: "review",
+        expectedStage: 1,
+        progress: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects introducing a word that already has a progress row", () => {
+    expect(
+      isStaleAnswer({
+        kind: "introduce",
+        progress: progress(1),
+      }),
+    ).toBe(true);
+    expect(
+      isStaleAnswer({
+        kind: "introduce",
+        progress: null,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("isReviewDue", () => {
+  it("is true when due today or overdue and the stage is below 4", () => {
+    expect(
+      isReviewDue(progress(2, { dueDate: "2026-01-01" }), "2026-01-01"),
+    ).toBe(true);
+    expect(
+      isReviewDue(progress(3, { dueDate: "2025-12-30" }), "2026-01-01"),
+    ).toBe(true);
+  });
+
+  it("is false before the due date", () => {
+    expect(
+      isReviewDue(progress(2, { dueDate: "2026-01-05" }), "2026-01-01"),
+    ).toBe(false);
+  });
+
+  it("is false for a duplicate wrong answer on the same study day", () => {
+    const first = answerReview({
+      progress: progress(2),
+      correct: false,
+      studyDay: "2026-01-01",
+      firstAttempt: true,
+    });
+
+    expect(
+      isStaleAnswer({
+        kind: "review",
+        expectedStage: 2,
+        progress: first,
+      }),
+    ).toBe(false);
+    expect(isReviewDue(first, "2026-01-01")).toBe(false);
+  });
+
+  it("is false for a graduated or missing row", () => {
+    expect(isReviewDue(progress(4), "2026-01-01")).toBe(false);
+    expect(isReviewDue(null, "2026-01-01")).toBe(false);
   });
 });
 

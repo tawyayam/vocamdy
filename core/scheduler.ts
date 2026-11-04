@@ -1,4 +1,4 @@
-import { addStudyDays } from "./day";
+import { addStudyDays, compareStudyDays } from "./day";
 import type { Progress, Stage } from "./types";
 
 export type IntroduceWordInput = {
@@ -18,6 +18,30 @@ export type ReviewAnswerInput = {
   studyDay: string;
   firstAttempt: boolean;
 };
+
+export type StaleAnswerInput =
+  | { kind: "review"; expectedStage: Stage; progress: Progress | null }
+  | { kind: "introduce"; progress: Progress | null };
+
+export function isStaleAnswer(input: StaleAnswerInput): boolean {
+  if (input.kind === "introduce") {
+    return input.progress !== null;
+  }
+
+  return input.progress === null || input.progress.stage !== input.expectedStage;
+}
+
+export function isReviewDue(
+  progress: Progress | null,
+  studyDay: string,
+): boolean {
+  return (
+    progress !== null &&
+    progress.stage < 4 &&
+    progress.dueDate !== null &&
+    compareStudyDays(progress.dueDate, studyDay) <= 0
+  );
+}
 
 export function introduceWord(input: IntroduceWordInput): Progress {
   return {
