@@ -50,9 +50,16 @@ export async function saveActivity(
 ): Promise<void> {
   const { error } = await supabase
     .from("daily_activity")
-    .upsert(toActivityRow(activity, userId), {
-      onConflict: "user_id,study_day",
-    });
+    .upsert(
+      {
+        ...toActivityRow(activity, userId),
+        // The column default only applies on insert, so upserts must set it.
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "user_id,study_day",
+      },
+    );
 
   if (error) {
     throw error;

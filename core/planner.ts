@@ -193,6 +193,41 @@ export function planNewBatch(input: NewBatchInput): NewBatchPlan {
   };
 }
 
+export type ReviewBlockInput = {
+  state: TodayState;
+  candidates: readonly Word[];
+  dailyNew: number;
+  batchSize: number;
+};
+
+export type ReviewBlockPlan = {
+  nextBatch: NewBatchPlan;
+  completesDay: boolean;
+};
+
+export function planAfterReviewBlock(input: ReviewBlockInput): ReviewBlockPlan {
+  const { state, candidates, dailyNew, batchSize } = input;
+
+  if (state.status === "paused" || state.newRemaining === 0) {
+    return {
+      nextBatch: { mode: "required", words: [], isLastForDay: false },
+      completesDay: state.isComplete,
+    };
+  }
+
+  const nextBatch = planNewBatch({
+    candidates,
+    introducedToday: state.introducedToday,
+    dailyNew,
+    batchSize,
+  });
+
+  return {
+    nextBatch,
+    completesDay: nextBatch.words.length === 0 && state.isComplete,
+  };
+}
+
 export function planMiniSession(state: TodayState, batchSize: number): MiniSession {
   const reviews = state.dueReviews.slice(0, MINI_REVIEW_LIMIT);
   const newWords =

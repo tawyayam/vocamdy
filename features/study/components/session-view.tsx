@@ -3,9 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getStudyDay } from "@/core/day";
-import { buildTodayState, planNewBatch } from "@/core/planner";
-import type { Deck, Progress, TodayState, Word } from "@/core/types";
-import { completeStudyDay } from "../actions";
+import {
+  buildTodayState,
+  planAfterReviewBlock,
+  planMiniSession,
+  planNewBatch,
+} from "@/core/planner";
+import type { Completion, Deck, Progress, TodayState, Word } from "@/core/types";
+import { completeStudyDay, loadReviewWords } from "../actions";
 import type { SessionData } from "../session-data";
 import { BatchSummaryScreen } from "./batch-summary-screen";
 import {
@@ -14,13 +19,30 @@ import {
 } from "./completion-screen";
 import { LearnScreen } from "./learn-screen";
 import { QuizScreen, type QuizFinishedResult } from "./quiz-screen";
+import {
+  ReviewScreen,
+  type ReviewFinishedResult,
+} from "./review-screen";
+import { ReviewSummaryScreen } from "./review-summary-screen";
+import { SessionExit } from "./session-exit";
 import { SessionSkeleton } from "./session-skeleton";
+
+export type SessionMode = "full" | "mini";
 
 type SessionViewProps = {
   data: SessionData;
+  mode: SessionMode;
 };
 
-type Phase = "learn" | "quiz" | "summary" | "completion";
+type Phase =
+  | "review"
+  | "review-summary"
+  | "learn"
+  | "quiz"
+  | "summary"
+  | "completion";
+
+type ReviewLoadState = "idle" | "failed";
 
 function poolWordToWord(
   poolWord: SessionData["pool"][number],
@@ -56,10 +78,6 @@ function getSessionNotice(
   state: TodayState,
   batchCount: number,
 ): string | null {
-  if (state.status === "paused") {
-    return "paused";
-  }
-
   if (state.status === "deck-complete") {
     return "deck-complete";
   }
@@ -68,8 +86,8 @@ function getSessionNotice(
     return "complete";
   }
 
-  if (state.newRemaining === 0 || batchCount === 0) {
-    return "no-new-words";
+  if (batchCount === 0 && state.dueReviews.length === 0) {
+    return "complete";
   }
 
   return null;
@@ -92,12 +110,15 @@ function mergeProgress(
   return [...byWordId.values()];
 }
 
-async function saveCompletion(studyDay: string): Promise<CompletionSaveState> {
+async function saveCompletion(
+  studyDay: string,
+  completion: Completion,
+): Promise<CompletionSaveState> {
   try {
     const result = await completeStudyDay({
       kind: "completion",
       studyDay,
-      completion: "full",
+      completion,
     });
 
     return result.ok ? "saved" : "failed";
@@ -107,17 +128,23 @@ async function saveCompletion(studyDay: string): Promise<CompletionSaveState> {
   }
 }
 
-export function SessionView({ data }: SessionViewProps) {
+export function SessionView({ data, mode }: SessionViewProps) {
   const router = useRouter();
   const [initialData] = useState(data);
   const [studyDay, setStudyDay] = useState<string | null>(null);
-  const [phase, setPhase] = useState<Phase>("learn");
+  const [phase, setPhase] = useState<Phase>("review");
   const [progress, setProgress] = useState<Progress[]>(
     () => initialData.progress,
   );
   const [batchWords, setBatchWords] = useState<Word[] | null>(null);
   const [batchIsLastForDay, setBatchIsLastForDay] = useState(false);
   const [wrongCounts, setWrongCounts] = useState<Record<string, number>>({});
+  const [reviewWords, setReviewWords] = useState<Word[] | null>(null);
+  const [reviewLoadState, setReviewLoadState] =
+    useState<ReviewLoadState>("idle");
+  const [reviewLoadAttempt, setReviewLoadAttempt] = useState(0);
+  const [reviewResult, setReviewResult] =
+    useState<ReviewFinishedResult | null>(null);
   const [sessionCounts, setSessionCounts] = useState({
     answers: 0,
     newWords: 0,
@@ -148,6 +175,20 @@ export function SessionView({ data }: SessionViewProps) {
         : null,
     [exerciseDeck, initialData.progress, initialData.settings, studyDay],
   );
+  const initialMini = useMemo(
+    () =>
+      initialState
+        ? planMiniSession(initialState, initialData.settings.batchSize)
+        : null,
+    [initialData.settings.batchSize, initialState],
+  );
+  const initialReviews = useMemo(
+    () =>
+      mode === "mini"
+        ? (initialMini?.reviews ?? [])
+        : (initialState?.dueReviews ?? []),
+    [initialMini, initialState, mode],
+  );
   const initialBatchPlan = useMemo(() => {
     if (!initialState) {
       return null;
@@ -165,7 +206,13 @@ export function SessionView({ data }: SessionViewProps) {
     initialData.settings.dailyNew,
     initialState,
   ]);
-  const initialBatch = initialBatchPlan?.words ?? null;
+  const miniBatch = initialMini?.newWords ?? [];
+  const initialBatch =
+    mode === "mini"
+      ? miniBatch.length > 0
+        ? miniBatch
+        : null
+      : (initialBatchPlan?.words ?? null);
   const notice = initialState
     ? getSessionNotice(initialState, initialBatch?.length ?? 0)
     : null;
@@ -201,7 +248,7 @@ export function SessionView({ data }: SessionViewProps) {
     [initialData.activities, studyDay],
   );
   const nextExtraBatch = useMemo(() => {
-    if (!state) {
+    if (mode === "mini" || !state) {
       return [];
     }
 
@@ -216,8 +263,41 @@ export function SessionView({ data }: SessionViewProps) {
     candidatesRemaining,
     initialData.settings.batchSize,
     initialData.settings.dailyNew,
+    mode,
     state,
   ]);
+  const nextRequiredPlan = useMemo(() => {
+    if (mode === "mini" || !state) {
+      return null;
+    }
+
+    return planAfterReviewBlock({
+      state,
+      candidates: candidatesRemaining,
+      dailyNew: initialData.settings.dailyNew,
+      batchSize: initialData.settings.batchSize,
+    });
+  }, [
+    candidatesRemaining,
+    initialData.settings.batchSize,
+    initialData.settings.dailyNew,
+    mode,
+    state,
+  ]);
+  const nextRequiredBatch = nextRequiredPlan?.nextBatch.words ?? [];
+  const reviewCompletesDay = nextRequiredPlan?.completesDay ?? false;
+  const reviewWordIds = useMemo(
+    () => new Set(reviewWords?.map((word) => word.id) ?? []),
+    [reviewWords],
+  );
+  const validReviews = useMemo(
+    () => initialReviews.filter((review) => reviewWordIds.has(review.wordId)),
+    [initialReviews, reviewWordIds],
+  );
+  const reviewSummaryWords = useMemo(
+    () => reviewWords?.filter((word) => reviewWordIds.has(word.id)) ?? [],
+    [reviewWordIds, reviewWords],
+  );
   const activeBatch = batchWords ?? initialBatch;
   const activeBatchIsLastForDay =
     batchWords === null
@@ -230,7 +310,47 @@ export function SessionView({ data }: SessionViewProps) {
     (initialActivity?.newWordsCount ?? 0) + sessionCounts.newWords,
   );
   const canLearnMore =
-    state?.status !== "paused" && nextExtraBatch.length > 0;
+    mode === "full" &&
+    state?.status !== "paused" &&
+    nextExtraBatch.length > 0;
+  const skipReview = initialReviews.length === 0;
+  const activePhase: Phase =
+    phase === "review" && skipReview ? "learn" : phase;
+
+  useEffect(() => {
+    if (!studyDay || initialReviews.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    loadReviewWords(initialReviews.map((review) => review.wordId))
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (!result.ok) {
+          setReviewLoadState("failed");
+          return;
+        }
+
+        setReviewWords(result.words);
+        setReviewLoadState("idle");
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("Could not load the review words.", error);
+        setReviewLoadState("failed");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialReviews, reviewLoadAttempt, studyDay]);
 
   useEffect(() => {
     if (notice) {
@@ -252,8 +372,18 @@ export function SessionView({ data }: SessionViewProps) {
       return completionPromiseRef.current;
     }
 
+    if (
+      mode === "full" &&
+      (!state ||
+        state.dueReviews.length > 0 ||
+        (state.newRemaining > 0 && !activeBatchIsLastForDay))
+    ) {
+      setCompletionSaveState("failed");
+      return Promise.resolve("failed");
+    }
+
     setCompletionSaveState("saving");
-    const promise = saveCompletion(studyDay).then((nextState) => {
+    const promise = saveCompletion(studyDay, mode).then((nextState) => {
       if (nextState === "saved") {
         completionSavedRef.current = true;
       }
@@ -265,15 +395,49 @@ export function SessionView({ data }: SessionViewProps) {
 
     completionPromiseRef.current = promise;
     return promise;
-  }, [studyDay]);
+  }, [activeBatchIsLastForDay, mode, state, studyDay]);
 
-  useEffect(() => {
-    if (phase !== "completion" || completionSaveState === "failed") {
+  function finishReview(result: ReviewFinishedResult) {
+    setProgress((current) => mergeProgress(current, result.progress));
+    setSessionCounts((current) => ({
+      ...current,
+      answers: current.answers + result.answers,
+    }));
+    setReviewResult(result);
+    setPhase("review-summary");
+  }
+
+  function continueAfterReview() {
+    if (mode === "mini") {
+      if (initialBatch) {
+        setBatchWords(initialBatch);
+        setBatchIsLastForDay(true);
+        setWrongCounts({});
+        setPhase("learn");
+        return;
+      }
+
+      setPhase("completion");
+      void requestCompletion();
       return;
     }
 
-    void requestCompletion();
-  }, [completionSaveState, phase, requestCompletion]);
+    const next = nextRequiredPlan?.nextBatch;
+
+    if (next && next.words.length > 0) {
+      setBatchWords(next.words);
+      setBatchIsLastForDay(next.isLastForDay);
+      setWrongCounts({});
+      setPhase("learn");
+      return;
+    }
+
+    setPhase("completion");
+
+    if (reviewCompletesDay) {
+      void requestCompletion();
+    }
+  }
 
   function startQuiz() {
     if (!activeBatch) {
@@ -294,7 +458,7 @@ export function SessionView({ data }: SessionViewProps) {
     }));
     setWrongCounts(result.wrongCounts);
 
-    if (activeBatchIsLastForDay) {
+    if (mode === "mini" || activeBatchIsLastForDay) {
       void requestCompletion();
     }
 
@@ -302,18 +466,15 @@ export function SessionView({ data }: SessionViewProps) {
   }
 
   function continueAfterSummary() {
-    if (!state) {
+    if (mode === "mini") {
+      setPhase("completion");
+      void requestCompletion();
       return;
     }
 
-    const next = planNewBatch({
-      candidates: candidatesRemaining,
-      introducedToday: state.introducedToday,
-      dailyNew: initialData.settings.dailyNew,
-      batchSize: initialData.settings.batchSize,
-    });
+    const next = nextRequiredPlan?.nextBatch;
 
-    if (next.words.length > 0) {
+    if (next && next.words.length > 0) {
       setBatchWords(next.words);
       setBatchIsLastForDay(next.isLastForDay);
       setWrongCounts({});
@@ -322,6 +483,7 @@ export function SessionView({ data }: SessionViewProps) {
     }
 
     setPhase("completion");
+    void requestCompletion();
   }
 
   function learnMore() {
@@ -339,8 +501,14 @@ export function SessionView({ data }: SessionViewProps) {
     void requestCompletion();
   }
 
+  function retryReviews() {
+    setReviewLoadState("idle");
+    setReviewWords(null);
+    setReviewLoadAttempt((current) => current + 1);
+  }
+
   async function stopForToday() {
-    if (activeBatchIsLastForDay) {
+    if (mode === "mini" || activeBatchIsLastForDay) {
       const nextState = await requestCompletion();
 
       if (nextState !== "saved") {
@@ -352,13 +520,112 @@ export function SessionView({ data }: SessionViewProps) {
     router.replace("/");
   }
 
-  if (!studyDay || !state || !initialBatch || notice) {
+  async function stopAfterReview() {
+    if (mode === "mini") {
+      if (initialBatch) {
+        router.replace("/");
+        return;
+      }
+
+      const nextState = await requestCompletion();
+
+      if (nextState !== "saved") {
+        setPhase("completion");
+        return;
+      }
+
+      router.replace("/");
+      return;
+    }
+
+    if (reviewCompletesDay) {
+      const nextState = await requestCompletion();
+
+      if (nextState !== "saved") {
+        setPhase("completion");
+        return;
+      }
+    }
+
+    router.replace("/");
+  }
+
+  if (!studyDay || !state || !initialState || notice) {
     return <SessionSkeleton />;
   }
 
-  if (phase === "completion") {
+  if (activePhase === "review") {
+    if (
+      reviewLoadState === "failed" ||
+      (reviewWords !== null && validReviews.length === 0)
+    ) {
+      return (
+        <div className="mx-auto w-full max-w-[640px] px-4 py-6">
+          <header className="flex items-center gap-3">
+            <SessionExit />
+          </header>
+          <section className="mt-5 rounded-2xl border border-border bg-card p-5">
+            <h1 className="font-serif text-2xl font-semibold text-ink">
+              Couldn&apos;t load your reviews
+            </h1>
+            <p className="mt-2 text-sm text-muted">
+              Please try again before continuing.
+            </p>
+            <button
+              type="button"
+              onClick={retryReviews}
+              className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-primary px-5 py-3 font-medium text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              Try again
+            </button>
+          </section>
+        </div>
+      );
+    }
+
+    if (!reviewWords) {
+      return <SessionSkeleton />;
+    }
+
+    return (
+      <ReviewScreen
+        reviews={validReviews}
+        words={reviewWords}
+        deck={exerciseDeck}
+        studyDay={studyDay}
+        onFinished={finishReview}
+      />
+    );
+  }
+
+  if (activePhase === "review-summary") {
+    if (!reviewResult) {
+      return <SessionSkeleton />;
+    }
+
+    return (
+      <ReviewSummaryScreen
+        words={reviewSummaryWords}
+        wrongCounts={reviewResult.wrongCounts}
+        continueLabel={
+          mode === "mini"
+            ? initialBatch
+              ? "Continue to new words"
+              : "Finish"
+            : nextRequiredBatch.length > 0
+              ? "Continue to new words"
+              : "Finish"
+        }
+        onStop={() => void stopAfterReview()}
+        onContinue={continueAfterReview}
+      />
+    );
+  }
+
+  if (activePhase === "completion") {
     return (
       <CompletionScreen
+        completion={mode}
         introducedToday={newWordsToday}
         answersToday={answersToday}
         tomorrow={state.tomorrow}
@@ -376,11 +643,11 @@ export function SessionView({ data }: SessionViewProps) {
     return <SessionSkeleton />;
   }
 
-  if (phase === "learn") {
+  if (activePhase === "learn") {
     return <LearnScreen words={activeBatch} onStart={startQuiz} />;
   }
 
-  if (phase === "summary") {
+  if (activePhase === "summary") {
     return (
       <BatchSummaryScreen
         words={activeBatch}

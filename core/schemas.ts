@@ -41,6 +41,10 @@ export const completionSchema = z.object({
   completion: z.enum(["full", "mini"]),
 });
 
+export const reviewWordIdsSchema = z
+  .array(z.string().trim().min(1))
+  .max(1000);
+
 export const answerInputSchema = z.discriminatedUnion("kind", [
   reviewAnswerSchema,
   introducedWordSchema,

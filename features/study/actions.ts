@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { getDeck } from "@/content/decks";
-import { answerInputForServerDay } from "@/core/schemas";
+import {
+  answerInputForServerDay,
+  reviewWordIdsSchema,
+} from "@/core/schemas";
 import {
   answerReview,
   introduceWord,
@@ -14,12 +17,17 @@ import { getActivityForDay, saveActivity } from "@/db/activity";
 import { getProgressForWord, saveProgress } from "@/db/progress";
 import { createSupabaseServerClient } from "@/db/server";
 import { getUserSettings } from "@/db/settings";
-import type { CompletionActionResult, StudyActionResult } from "./types";
+import type {
+  CompletionActionResult,
+  ReviewWordsResult,
+  StudyActionResult,
+} from "./types";
 
 const AUTH_ERROR = "Please sign in again.";
 const DECK_ERROR = "Couldn't load your deck.";
 const WORD_ERROR = "That word is not in your deck.";
 const SAVE_ERROR = "Couldn't save. Please try again.";
+const LOAD_ERROR = "Couldn't load your reviews. Please try again.";
 
 type StudySession = {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -127,6 +135,40 @@ async function getDeckAndWord(
   }
 
   return { ok: true, deckId: deck.id };
+}
+
+export async function loadReviewWords(raw: unknown): Promise<ReviewWordsResult> {
+  try {
+    const session = await getStudySession();
+
+    if (!session) {
+      return { ok: false, error: AUTH_ERROR };
+    }
+
+    const parsed = reviewWordIdsSchema.safeParse(raw);
+
+    if (!parsed.success) {
+      return { ok: false, error: LOAD_ERROR };
+    }
+
+    const settings = await getUserSettings(session.supabase, session.userId);
+    const deck = getDeck(settings.activeDeckId);
+
+    if (!deck) {
+      return { ok: false, error: DECK_ERROR };
+    }
+
+    const wordsById = new Map(deck.words.map((word) => [word.id, word]));
+    const words = parsed.data.flatMap((wordId) => {
+      const word = wordsById.get(wordId);
+      return word ? [word] : [];
+    });
+
+    return { ok: true, words };
+  } catch (error) {
+    console.error("Could not load the review words.", error);
+    return { ok: false, error: LOAD_ERROR };
+  }
 }
 
 export async function submitReviewAnswer(raw: unknown): Promise<StudyActionResult> {

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, Check } from "lucide-react";
-import type { TomorrowPreview } from "@/core/types";
+import type { Completion, TomorrowPreview } from "@/core/types";
 import { countLabel } from "../format";
 import { SessionExit } from "./session-exit";
 import { TomorrowPreview as TomorrowPreviewCard } from "./tomorrow-preview";
@@ -9,6 +9,7 @@ import { TomorrowPreview as TomorrowPreviewCard } from "./tomorrow-preview";
 export type CompletionSaveState = "idle" | "saving" | "saved" | "failed";
 
 type CompletionScreenProps = {
+  completion: Completion;
   introducedToday: number;
   answersToday: number;
   tomorrow: TomorrowPreview;
@@ -21,6 +22,7 @@ type CompletionScreenProps = {
 };
 
 export function CompletionScreen({
+  completion,
   introducedToday,
   answersToday,
   tomorrow,
@@ -31,6 +33,7 @@ export function CompletionScreen({
   onLearnMore,
   onBack,
 }: CompletionScreenProps) {
+  const isMini = completion === "mini";
   return (
     <div className="mx-auto w-full max-w-[640px] px-4 py-6">
       <header className="flex items-center gap-3">
@@ -42,11 +45,12 @@ export function CompletionScreen({
           <Check aria-hidden="true" className="h-10 w-10" strokeWidth={2} />
         </div>
         <h1 className="mt-6 font-serif text-3xl font-semibold text-ink">
-          All done for today
+          {isMini ? "Mini session done" : "All done for today"}
         </h1>
         <p className="mx-auto mt-2 max-w-sm text-muted">
-          You showed up and finished the new words. That is how the list gets
-          smaller.
+          {isMini
+            ? "You showed up and made progress. That is how the list gets smaller."
+            : "You showed up and finished the new words. That is how the list gets smaller."}
         </p>
       </section>
 

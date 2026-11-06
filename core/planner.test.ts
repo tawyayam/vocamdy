@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildTodayState,
+  planAfterReviewBlock,
   planMiniSession,
   planNewBatch,
   splitIntoBatches,
@@ -218,6 +219,123 @@ describe("buildTodayState", () => {
     expect(state.tomorrow).toEqual({ newWords: 8, reviews: 12 });
   });
 
+  it("keeps unanswered reviews due after an abandoned review block", () => {
+    const deck = makeDeck([
+      makeWord("test:w1", 1),
+      makeWord("test:w2", 2),
+      makeWord("test:w3", 3),
+    ]);
+    const progress = [
+      makeProgress("test:w1", 2, "2026-01-04"),
+      makeProgress("test:w2", 1, studyDay),
+      makeProgress("test:w3", 1, studyDay),
+    ];
+    const state = build(
+      deck,
+      progress,
+      makeActivity({ answersCount: 1 }),
+    );
+
+    expect(state.dueReviews.map((item) => item.wordId)).toEqual([
+      "test:w2",
+      "test:w3",
+    ]);
+    expect(state.status).toBe("continue");
+    expect(state.isComplete).toBe(false);
+  });
+
+  it("plans no new words while saved reviews still leave the backlog paused", () => {
+    const deck = makeDeck(
+      Array.from({ length: 20 }, (_, index) => makeWord(`test:w${index + 1}`, index + 1)),
+    );
+    const progress = [
+      makeProgress("test:w1", 2, "2026-01-04"),
+      makeProgress("test:w2", 1, "2025-12-30"),
+      makeProgress("test:w3", 1, "2025-12-30"),
+      makeProgress("test:w4", 1, "2025-12-30"),
+    ];
+    const state = build(deck, progress, makeActivity({ answersCount: 1 }), {
+      ...settings,
+      backlogCap: 2,
+    });
+    const plan = planAfterReviewBlock({
+      state,
+      candidates: deck.words.slice(4),
+      dailyNew: settings.dailyNew,
+      batchSize: settings.batchSize,
+    });
+
+    expect(state.status).toBe("paused");
+    expect(state.newRemaining).toBe(0);
+    expect(plan.nextBatch.words).toHaveLength(0);
+    expect(plan.completesDay).toBe(false);
+  });
+
+  it("plans new words after saved reviews clear the backlog", () => {
+    const deck = makeDeck(
+      Array.from({ length: 20 }, (_, index) => makeWord(`test:w${index + 1}`, index + 1)),
+    );
+    const progress = [
+      makeProgress("test:w1", 2, "2026-01-04"),
+      makeProgress("test:w2", 2, "2026-01-04"),
+    ];
+    const state = build(deck, progress, makeActivity({ answersCount: 2 }), {
+      ...settings,
+      backlogCap: 2,
+    });
+    const plan = planAfterReviewBlock({
+      state,
+      candidates: deck.words.slice(2),
+      dailyNew: settings.dailyNew,
+      batchSize: settings.batchSize,
+    });
+
+    expect(state.status).toBe("continue");
+    expect(state.newRemaining).toBe(10);
+    expect(plan.nextBatch.words).toHaveLength(5);
+    expect(plan.completesDay).toBe(false);
+  });
+
+  it("completes the day when the review block is the last unit", () => {
+    const deck = makeDeck([makeWord("test:w1", 1)]);
+    const state = build(
+      deck,
+      [makeProgress("test:w1", 2, "2026-01-04")],
+      makeActivity({ answersCount: 1 }),
+    );
+    const plan = planAfterReviewBlock({
+      state,
+      candidates: [],
+      dailyNew: settings.dailyNew,
+      batchSize: settings.batchSize,
+    });
+
+    expect(state.isComplete).toBe(true);
+    expect(plan.nextBatch.words).toHaveLength(0);
+    expect(plan.completesDay).toBe(true);
+  });
+
+  it("does not complete the day when new words follow the review block", () => {
+    const deck = makeDeck(
+      Array.from({ length: 20 }, (_, index) => makeWord(`test:w${index + 1}`, index + 1)),
+    );
+    const state = build(
+      deck,
+      [makeProgress("test:w1", 2, "2026-01-04")],
+      makeActivity({ answersCount: 1 }),
+    );
+    const plan = planAfterReviewBlock({
+      state,
+      candidates: deck.words.slice(1),
+      dailyNew: settings.dailyNew,
+      batchSize: settings.batchSize,
+    });
+
+    expect(state.isComplete).toBe(false);
+    expect(plan.nextBatch.words).toHaveLength(5);
+    expect(plan.completesDay).toBe(false);
+  });
+
   it("plans a mini session with reviews first, then one new batch", () => {
     const deck = makeDeck(
       Array.from({ length: 20 }, (_, index) => makeWord(`test:w${index + 1}`, index + 1)),
@@ -245,6 +363,19 @@ describe("buildTodayState", () => {
     expect(planMiniSession(twelveDue, 5).newWords).toHaveLength(0);
     expect(planMiniSession(paused, 5).reviews).toHaveLength(3);
     expect(planMiniSession(paused, 5).newWords).toHaveLength(0);
+  });
+
+  it("uses only due reviews when the deck has no new words left", () => {
+    const deck = makeDeck(
+      Array.from({ length: 3 }, (_, index) => makeWord(`test:w${index + 1}`, index + 1)),
+    );
+    const state = build(
+      deck,
+      deck.words.map((word) => makeProgress(word.id, 1)),
+    );
+
+    expect(planMiniSession(state, 5).reviews).toHaveLength(3);
+    expect(planMiniSession(state, 5).newWords).toHaveLength(0);
   });
 
   it("splits batches with a smaller last batch", () => {

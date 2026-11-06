@@ -12,6 +12,7 @@ type QuizFeedbackProps = {
   word: Word;
   saveState: QuizSaveState;
   finish: boolean;
+  finishLabel?: string;
   onRetry: () => void;
   onContinue: () => void;
 };
@@ -23,6 +24,7 @@ export function QuizFeedback({
   word,
   saveState,
   finish,
+  finishLabel,
   onRetry,
   onContinue,
 }: QuizFeedbackProps) {
@@ -94,7 +96,7 @@ export function QuizFeedback({
           >
             {saveState === "saved"
               ? finish
-                ? "Finish batch"
+                ? (finishLabel ?? "Finish batch")
                 : "Continue"
               : "Saving..."}
           </button>

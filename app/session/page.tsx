@@ -3,7 +3,12 @@ import { redirect } from "next/navigation";
 import { SessionView } from "@/features/study/components/session-view";
 import { loadSessionData } from "@/features/study/session-data";
 
-export default async function SessionPage() {
+type SessionPageProps = {
+  searchParams: Promise<{ mode?: string | string[] }>;
+};
+
+export default async function SessionPage({ searchParams }: SessionPageProps) {
+  const mode = (await searchParams).mode === "mini" ? "mini" : "full";
   const result = await loadSessionData();
 
   if (result.status === "unauthenticated") {
@@ -31,5 +36,5 @@ export default async function SessionPage() {
     );
   }
 
-  return <SessionView data={result.data} />;
+  return <SessionView data={result.data} mode={mode} />;
 }

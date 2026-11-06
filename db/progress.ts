@@ -63,7 +63,14 @@ export async function saveProgress(
 ): Promise<void> {
   const { error } = await supabase
     .from("word_progress")
-    .upsert(toProgressRow(progress, userId), { onConflict: "user_id,word_id" });
+    .upsert(
+      {
+        ...toProgressRow(progress, userId),
+        // The column default only applies on insert, so upserts must set it.
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,word_id" },
+    );
 
   if (error) {
     throw error;
