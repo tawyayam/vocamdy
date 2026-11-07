@@ -1,17 +1,28 @@
-export default function ProgressPage() {
+import { getRecentActivity } from "@/db/activity";
+import { getProgressForDeck } from "@/db/progress";
+import { ProgressView } from "@/features/progress/components/progress-view";
+import { summarizeDeck } from "@/features/study/deck-summary";
+import { DeckError } from "@/features/study/components/deck-error";
+import { loadActiveDeck } from "@/features/study/load-active-deck";
+
+export default async function ProgressPage() {
+  const { supabase, userId, settings, deck } = await loadActiveDeck();
+
+  if (!deck) {
+    return <DeckError />;
+  }
+
+  const [progress, activities] = await Promise.all([
+    getProgressForDeck(supabase, userId, deck.id),
+    getRecentActivity(supabase, userId, 14),
+  ]);
+
   return (
-    <div className="space-y-4">
-      <header>
-        <p className="text-sm text-muted">Progress</p>
-        <h1 className="mt-1 font-serif text-3xl font-semibold text-ink">
-          Your progress
-        </h1>
-      </header>
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <p className="text-sm text-muted">
-          Detailed progress will appear here soon.
-        </p>
-      </section>
-    </div>
+    <ProgressView
+      summary={summarizeDeck(deck)}
+      progress={progress}
+      activities={activities}
+      settings={settings}
+    />
   );
 }

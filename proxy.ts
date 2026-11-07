@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/db/session";
 
-const publicPaths = new Set(["/login", "/auth/callback"]);
+const publicPaths = new Set(["/login", "/auth/callback", "/api/export"]);
 
 function redirectToLogin(request: NextRequest, response: NextResponse) {
   const url = request.nextUrl.clone();

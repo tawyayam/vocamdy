@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   answerInputForServerDay,
   completionSchema,
+  exportDataSchema,
   extraAttemptSchema,
   introducedWordSchema,
   reviewAnswerSchema,
@@ -141,5 +142,54 @@ describe("settingsInputSchema", () => {
     expect(settingsInputSchema.safeParse({ ...settings, batchSize: 11 }).success).toBe(false);
     expect(settingsInputSchema.safeParse({ ...settings, backlogCap: 9 }).success).toBe(false);
     expect(settingsInputSchema.safeParse({ ...settings, backlogCap: 101 }).success).toBe(false);
+  });
+});
+
+describe("exportDataSchema", () => {
+  it("round-trips the exported shape", () => {
+    const snapshot = {
+      schema_version: 1,
+      exported_at: "2026-01-10T12:00:00.000Z",
+      user_settings: {
+        user_id: "user-1",
+        active_deck_id: "awl",
+        daily_new: 10,
+        batch_size: 5,
+        backlog_cap: 30,
+        updated_at: "2026-01-10T12:00:00.000Z",
+      },
+      word_progress: [
+        {
+          user_id: "user-1",
+          word_id: "awl:1",
+          deck_id: "awl",
+          stage: 2,
+          due_date: "2026-01-13",
+          introduced_on: "2026-01-01",
+          graduated_on: null,
+          correct_count: 4,
+          wrong_count: 1,
+          last_answered_on: "2026-01-10",
+          updated_at: "2026-01-10T12:00:00.000Z",
+        },
+      ],
+      daily_activity: [
+        {
+          user_id: "user-1",
+          study_day: "2026-01-10",
+          answers_count: 12,
+          new_words_count: 5,
+          reviews_count: 7,
+          completed: "full",
+          updated_at: "2026-01-10T12:00:00.000Z",
+        },
+      ],
+    };
+
+    const parsed = exportDataSchema.parse(
+      JSON.parse(JSON.stringify(snapshot)),
+    );
+
+    expect(parsed).toEqual(snapshot);
   });
 });

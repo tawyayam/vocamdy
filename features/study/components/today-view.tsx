@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { daysBetweenStudyDays, getStudyDay } from "@/core/day";
+import { useMemo } from "react";
+import { daysBetweenStudyDays } from "@/core/day";
 import { buildTodayState, planMiniSession } from "@/core/planner";
+import { summarizeProgress } from "@/core/progress-summary";
 import type { Activity, Progress, Settings } from "@/core/types";
 import { buildWeek, isActiveDay } from "@/core/week";
 import { toPlannerDeck, type DeckSummary } from "../deck-summary";
 import { formatStudyDay } from "../format";
+import { useStudyDay } from "../use-study-day";
 import { ProgressCard } from "./progress-card";
 import { SessionCard } from "./session-card";
 import { TodaySkeleton } from "./today-skeleton";
@@ -61,31 +62,12 @@ export function TodayView({
   settings,
   notice,
 }: TodayViewProps) {
-  const router = useRouter();
-  const [studyDay, setStudyDay] = useState<string | null>(null);
-
-  useEffect(() => {
-    const update = () => {
-      setStudyDay(getStudyDay(new Date()));
-      router.refresh();
-    };
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        update();
-      }
-    };
-
-    update();
-    window.addEventListener("focus", update);
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    return () => {
-      window.removeEventListener("focus", update);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [router]);
-
+  const studyDay = useStudyDay();
   const plannerDeck = useMemo(() => toPlannerDeck(summary), [summary]);
+  const progressSummary = useMemo(
+    () => summarizeProgress(summary, progress),
+    [progress, summary],
+  );
   const activity = useMemo(
     () =>
       studyDay
@@ -173,7 +155,7 @@ export function TodayView({
           <WeekCard week={week} />
           <ProgressCard
             summary={summary}
-            introduced={progress.length}
+            progressSummary={progressSummary}
             state={state}
             settings={settings}
           />

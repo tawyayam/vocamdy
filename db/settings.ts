@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Settings } from "@/core/types";
 import type { Database } from "./database.types";
-import { toSettings } from "./mappers";
+import { toSettings, toSettingsRow } from "./mappers";
 
 type SupabaseServerClient = SupabaseClient<Database, "public">;
 
@@ -45,4 +45,24 @@ export async function getUserSettings(
   }
 
   return data ? toSettings(data) : DEFAULT_SETTINGS;
+}
+
+export async function saveUserSettings(
+  supabase: SupabaseServerClient,
+  userId: string,
+  settings: Settings,
+): Promise<void> {
+  const { error } = await supabase
+    .from("user_settings")
+    .upsert(
+      {
+        ...toSettingsRow(settings, userId),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+
+  if (error) {
+    throw error;
+  }
 }
