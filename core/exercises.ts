@@ -9,7 +9,7 @@ import type {
   Word,
 } from "./types";
 
-export type CreateExerciseInput = {
+type CreateExerciseInput = {
   word: Word;
   deck: Deck;
   touch: Stage;

@@ -12,8 +12,8 @@
   --primary-soft: #e1eeec;
   --on-primary: #ffffff;
   --highlight: #f3dfa6;
-  --success: #2f7d4f;
-  --warn: #9a5b00;
+  --success: #286f44;
+  --warn: #8b5000;
 }
 
 [data-theme="dark"] {
@@ -56,6 +56,22 @@ body {
   font-family: var(--font-plex), system-ui, sans-serif;
 }
 
+.theme-logo-light {
+  display: block;
+}
+
+.theme-logo-dark {
+  display: none;
+}
+
+[data-theme="dark"] .theme-logo-light {
+  display: none;
+}
+
+[data-theme="dark"] .theme-logo-dark {
+  display: block;
+}
+
 @keyframes check-in {
   from {
     opacity: 0;
@@ -65,5 +81,16 @@ body {
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

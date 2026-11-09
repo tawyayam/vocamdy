@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeLogo } from "@/components/ui/theme-logo";
 import { isActivePath, navigationItems } from "./navigation";
 
 export function SidebarNav() {
@@ -14,13 +14,7 @@ export function SidebarNav() {
         href="/"
         className="flex items-center gap-3 rounded-xl px-2 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        <Image
-          src="/icons/logo-1024.png"
-          alt=""
-          width={40}
-          height={40}
-          className="h-10 w-10 rounded-xl"
-        />
+        <ThemeLogo alt="" size={40} className="h-10 w-10" />
         <span className="font-serif text-2xl font-semibold text-ink">
           Vocamdy
         </span>

@@ -172,7 +172,7 @@ export function ExerciseView({
         />
       </div>
 
-      <section className="mt-5 rounded-2xl border border-border bg-card p-5">
+      <section className="mt-5 min-w-0 rounded-2xl border border-border bg-card p-5">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">
           {promptLabel(exercise)}
         </p>
@@ -181,8 +181,8 @@ export function ExerciseView({
           lang={promptIsArabic ? "ar" : undefined}
           className={
             promptIsArabic
-              ? "mt-3 font-arabic text-2xl font-semibold text-ink"
-              : "mt-3 font-serif text-2xl font-semibold text-ink"
+              ? "mt-3 break-words font-arabic text-2xl font-semibold text-ink"
+              : "mt-3 break-words font-serif text-2xl font-semibold text-ink"
           }
         >
           {exercise.prompt}
@@ -224,7 +224,7 @@ export function ExerciseView({
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current text-xs">
                     {index + 1}
                   </span>
-                  <span>{option}</span>
+                  <span className="min-w-0 break-words">{option}</span>
                 </button>
               );
             })}
@@ -237,9 +237,14 @@ export function ExerciseView({
             }}
             className="mt-5"
           >
-            <label htmlFor="exercise-answer" className="text-sm text-muted">
-              Hint: <span className="font-mono">{typedExercise.hint}</span>
-            </label>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <label htmlFor="exercise-answer" className="text-sm text-muted">
+                Your answer
+              </label>
+              <p id="exercise-hint" className="text-sm text-muted">
+                Hint: <span className="font-mono">{typedExercise.hint}</span>
+              </p>
+            </div>
             <input
               ref={typedInputRef}
               id="exercise-answer"
@@ -251,7 +256,8 @@ export function ExerciseView({
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck={false}
-              className="mt-2 min-h-12 w-full rounded-xl border border-border bg-paper px-4 py-3 text-base text-ink outline-none transition-colors focus:border-primary disabled:cursor-default disabled:text-muted"
+              aria-describedby="exercise-hint"
+              className="mt-2 min-h-12 w-full rounded-xl border border-border bg-paper px-4 py-3 text-base text-ink outline-none transition-colors focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default disabled:text-muted"
             />
             <button
               type="submit"

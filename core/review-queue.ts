@@ -50,7 +50,7 @@ export function getReviewWrongCount(
   return state.wrongCounts[wordId] ?? 0;
 }
 
-export type ReviewRoundProgress = {
+type ReviewRoundProgress = {
   round: "first" | "second";
   completed: number;
   total: number;

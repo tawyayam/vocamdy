@@ -9,21 +9,21 @@ function unauthorized() {
 }
 
 export async function GET() {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getClaims();
-
-  if (error) {
-    console.error("Could not read the signed-in user for export.", error);
-    return unauthorized();
-  }
-
-  const userId = data?.claims?.sub;
-
-  if (typeof userId !== "string" || !userId) {
-    return unauthorized();
-  }
-
   try {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.getClaims();
+
+    if (error) {
+      console.error("Could not read the signed-in user for export.", error);
+      return unauthorized();
+    }
+
+    const userId = data?.claims?.sub;
+
+    if (typeof userId !== "string" || !userId) {
+      return unauthorized();
+    }
+
     const snapshot = await getExportSnapshot(supabase, userId);
     const filename = `vocamdy-export-${snapshot.exported_at.slice(0, 10)}.json`;
 

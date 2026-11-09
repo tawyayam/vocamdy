@@ -16,7 +16,7 @@ export type BuildDeckResult =
   | { ok: true; deck: Deck; report: DeckReport }
   | { ok: false; errors: string[]; report: DeckReport };
 
-export type ParsedConfig =
+type ParsedConfig =
   | { ok: true; config: DeckConfig }
   | { ok: false; errors: string[] };
 

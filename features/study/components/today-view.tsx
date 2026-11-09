@@ -1,6 +1,8 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import { useMemo } from "react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { daysBetweenStudyDays } from "@/core/day";
 import { buildTodayState, planMiniSession } from "@/core/planner";
 import { summarizeProgress } from "@/core/progress-summary";
@@ -115,6 +117,28 @@ export function TodayView({
     return <TodaySkeleton />;
   }
 
+  const isBrandNew =
+    summary.total > 0 && progress.length === 0 && activities.length === 0;
+
+  if (isBrandNew) {
+    return (
+      <div className="space-y-4">
+        <header>
+          <p className="text-sm text-muted">{formatStudyDay(studyDay)}</p>
+          <h1 className="mt-1 font-serif text-3xl font-semibold text-ink">
+            Welcome to Vocamdy.
+          </h1>
+        </header>
+        <EmptyState
+          icon={Sparkles}
+          title="Start your first session"
+          description="Learn a small batch of words, then answer a few quick questions."
+          action={{ href: "/session", label: "Start first session" }}
+        />
+      </div>
+    );
+  }
+
   const hasAnswers =
     (activity?.answersCount ?? 0) > 0 ||
     state.introducedToday > 0 ||
@@ -142,7 +166,7 @@ export function TodayView({
         </p>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <SessionCard
             state={state}
             deckName={summary.name}
@@ -151,7 +175,7 @@ export function TodayView({
           />
           <TomorrowPreview preview={state.tomorrow} />
         </div>
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <WeekCard week={week} />
           <ProgressCard
             summary={summary}

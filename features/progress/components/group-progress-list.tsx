@@ -21,8 +21,10 @@ export function GroupProgressList({ groups }: GroupProgressListProps) {
             return (
               <li key={group.id}>
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="font-medium text-ink">{group.label}</p>
-                  <p className="text-sm text-muted">
+                  <p className="min-w-0 break-words font-medium text-ink">
+                    {group.label}
+                  </p>
+                  <p className="shrink-0 text-sm text-muted">
                     {group.introduced} of {group.total}
                   </p>
                 </div>

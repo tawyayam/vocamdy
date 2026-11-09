@@ -1,8 +1,9 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { BookOpen, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   filterLearnedWords,
   type LearnedWord,
@@ -54,10 +55,14 @@ export function WordsView({ words }: WordsViewProps) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search a word or meaning"
-            className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm text-ink outline-none placeholder:text-muted focus:border-primary"
+            className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm text-ink outline-none placeholder:text-muted focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           />
         </div>
-        <div role="group" aria-label="Filter words" className="flex gap-2">
+        <div
+          role="group"
+          aria-label="Filter words"
+          className="flex flex-wrap gap-2"
+        >
           {FILTERS.map((item) => (
             <button
               key={item.value}
@@ -66,8 +71,8 @@ export function WordsView({ words }: WordsViewProps) {
               onClick={() => setFilter(item.value)}
               className={
                 filter === item.value
-                  ? "rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-on-primary"
-                  : "rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-muted"
+                  ? "inline-flex min-h-11 items-center rounded-full bg-primary px-3 text-sm font-medium text-on-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  : "inline-flex min-h-11 items-center rounded-full border border-border bg-card px-3 text-sm font-medium text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               }
             >
               {item.label}
@@ -76,32 +81,35 @@ export function WordsView({ words }: WordsViewProps) {
         </div>
       </div>
       {words.length === 0 ? (
-        <section className="rounded-2xl border border-border bg-card p-5">
-          <p className="text-sm text-muted">
-            No words yet. Learn your first words on Today.
-          </p>
-        </section>
+        <EmptyState
+          icon={BookOpen}
+          title="No words yet"
+          description="Learn your first words on Today."
+          action={{ href: "/", label: "Go to Today" }}
+        />
       ) : visibleWords.length === 0 ? (
-        <section className="rounded-2xl border border-border bg-card p-5">
-          <p className="text-sm text-muted">No words match your search.</p>
-        </section>
+        <EmptyState
+          icon={Search}
+          title="No words match your search"
+          description="Try a different word or meaning."
+        />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {visibleWords.map((word) => (
             <li key={word.id}>
               <Link
                 href={`/words/${encodeURIComponent(word.id)}`}
-                className="block rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary"
+                className="block rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="font-serif text-xl font-semibold text-ink">
+                  <p className="min-w-0 break-words font-serif text-xl font-semibold text-ink">
                     {word.word}
                   </p>
                   <span
                     className={
                       word.status === "graduated"
-                        ? "rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary"
-                        : "rounded-full bg-highlight px-2 py-0.5 text-xs font-medium text-ink"
+                        ? "shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary"
+                        : "shrink-0 rounded-full bg-highlight px-2 py-0.5 text-xs font-medium text-ink"
                     }
                   >
                     {word.status === "graduated" ? "Graduated" : "Learning"}
@@ -112,10 +120,12 @@ export function WordsView({ words }: WordsViewProps) {
                     {word.pos}
                   </p>
                 ) : null}
-                <p className="mt-2 line-clamp-2 text-sm text-muted">
+                <p className="mt-2 line-clamp-2 break-words text-sm text-muted">
                   {word.definition}
                 </p>
-                <p className="mt-2 text-xs text-muted">{word.groupLabel}</p>
+                <p className="mt-2 break-words text-xs text-muted">
+                  {word.groupLabel}
+                </p>
               </Link>
             </li>
           ))}

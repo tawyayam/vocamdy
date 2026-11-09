@@ -17,6 +17,7 @@ import type { Deck, Exercise, Progress, Stage, Word } from "@/core/types";
 import { submitExtraAttempt, submitReviewAnswer } from "../actions";
 import { ExerciseView, type ExerciseFeedback } from "./exercise-view";
 import type { QuizSaveState } from "./quiz-feedback";
+import { SessionEmpty } from "./session-empty";
 
 export type ReviewFinishedResult = {
   wrongCounts: Record<string, number>;
@@ -236,9 +237,10 @@ export function ReviewScreen({
 
   if (!exercise || !word) {
     return (
-      <div className="mx-auto w-full max-w-[640px] px-4 py-6">
-        <p className="text-sm text-muted">This review has no question.</p>
-      </div>
+      <SessionEmpty
+        title="No question in this review"
+        description="Return to Today and start another session."
+      />
     );
   }
 

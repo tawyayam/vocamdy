@@ -42,6 +42,7 @@ export async function setTheme(
       maxAge: THEME_COOKIE_MAX_AGE,
       sameSite: "lax",
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
     });
 
     revalidatePath("/", "layout");

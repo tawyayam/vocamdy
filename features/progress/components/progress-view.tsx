@@ -1,6 +1,8 @@
 "use client";
 
+import { Activity as ActivityIcon } from "lucide-react";
 import { useMemo } from "react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { buildTodayState } from "@/core/planner";
 import { summarizeProgress } from "@/core/progress-summary";
 import type { Activity, Progress, Settings } from "@/core/types";
@@ -63,6 +65,25 @@ export function ProgressView({
     return <ProgressSkeleton />;
   }
 
+  if (activities.length === 0) {
+    return (
+      <div className="space-y-4">
+        <header>
+          <p className="text-sm text-muted">{formatStudyDay(studyDay)}</p>
+          <h1 className="mt-1 font-serif text-3xl font-semibold text-ink">
+            Progress
+          </h1>
+        </header>
+        <EmptyState
+          icon={ActivityIcon}
+          title="No activity yet"
+          description="Your weekly activity and review history will appear after your first session."
+          action={{ href: "/", label: "Go to Today" }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <header>
@@ -72,7 +93,7 @@ export function ProgressView({
         </h1>
       </header>
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <StatusCountsCard counts={progressSummary.counts} />
           <ProgressCard
             summary={summary}
@@ -81,7 +102,7 @@ export function ProgressView({
             settings={settings}
           />
         </div>
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <WeekCard week={week} />
           <TomorrowPreview preview={state.tomorrow} />
         </div>

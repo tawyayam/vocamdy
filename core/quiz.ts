@@ -1,4 +1,4 @@
-export type QuizItem = {
+type QuizItem = {
   wordId: string;
   attempt: number;
 };

@@ -58,7 +58,7 @@ export function PeekSheet({ words, open, onClose }: PeekSheetProps) {
         </div>
         <div className="mt-4 space-y-3">
           {words.map((word) => (
-            <WordCard key={word.id} word={word} />
+            <WordCard key={word.id} word={word} headingLevel="h3" />
           ))}
         </div>
       </div>

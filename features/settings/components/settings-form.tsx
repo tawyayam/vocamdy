@@ -48,9 +48,12 @@ function NumberField({
         defaultValue={defaultValue}
         disabled={disabled}
         required
-        className="mt-2 h-11 w-full rounded-xl border border-border bg-paper px-3 text-sm text-ink outline-none focus:border-primary disabled:opacity-60"
+        aria-describedby={`${id}-description`}
+        className="mt-2 h-11 w-full rounded-xl border border-border bg-paper px-3 text-sm text-ink outline-none focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60"
       />
-      <p className="mt-1 text-xs text-muted">{description}</p>
+      <p id={`${id}-description`} className="mt-1 text-xs text-muted">
+        {description}
+      </p>
     </div>
   );
 }

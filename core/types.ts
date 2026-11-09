@@ -77,13 +77,6 @@ export type Settings = {
   backlogCap: number;
 };
 
-export type ExerciseKind =
-  | "choice_meaning"
-  | "choice_definition"
-  | "choice_cloze"
-  | "type_definition"
-  | "type_cloze";
-
 export type MeaningDirection = "headword_to_arabic" | "arabic_to_headword";
 
 type ExerciseBase = {

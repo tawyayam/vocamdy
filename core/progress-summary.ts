@@ -1,6 +1,6 @@
 import type { Group, Progress } from "./types";
 
-export type ProgressDeckWord = {
+type ProgressDeckWord = {
   id: string;
   group: string;
 };

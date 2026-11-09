@@ -1,10 +1,10 @@
 import type { Deck, Progress, Word } from "./types";
 
-export type LearnedWordStatus = "learning" | "graduated";
+type LearnedWordStatus = "learning" | "graduated";
 
 export type WordFilter = "all" | LearnedWordStatus;
 
-export type WordStatus = "new" | LearnedWordStatus;
+type WordStatus = "new" | LearnedWordStatus;
 
 export type LearnedWord = {
   id: string;

@@ -6,7 +6,7 @@ export function WordNotFound() {
     <div className="space-y-4">
       <Link
         href="/words"
-        className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink"
+        className="inline-flex min-h-11 items-center gap-1 text-sm text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <ArrowLeft aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />
         Words

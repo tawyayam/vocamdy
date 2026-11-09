@@ -1,6 +1,6 @@
 import { addStudyDays } from "./day";
 
-export type EstimateInput = {
+type EstimateInput = {
   totalWords: number;
   introduced: number;
   dailyNew: number;
@@ -9,7 +9,7 @@ export type EstimateInput = {
   paused: boolean;
 };
 
-export type Estimate = {
+type Estimate = {
   remaining: number;
   finishLearning: string | null;
   graduation: string | null;
@@ -29,6 +29,7 @@ export function estimateFinish(input: EstimateInput): Estimate {
   return {
     remaining,
     finishLearning,
+    // The review intervals are 1, 3 and 7 days, so graduation follows 11 days later.
     graduation: addStudyDays(finishLearning, 11),
   };
 }

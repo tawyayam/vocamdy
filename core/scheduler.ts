@@ -1,25 +1,25 @@
 import { addStudyDays, compareStudyDays } from "./day";
 import type { Progress, Stage } from "./types";
 
-export type IntroduceWordInput = {
+type IntroduceWordInput = {
   wordId: string;
   deckId: string;
   studyDay: string;
   wrongCount: number;
 };
 
-export type TouchOneAnswerInput = IntroduceWordInput & {
+type TouchOneAnswerInput = IntroduceWordInput & {
   correct: boolean;
 };
 
-export type ReviewAnswerInput = {
+type ReviewAnswerInput = {
   progress: Progress;
   correct: boolean;
   studyDay: string;
   firstAttempt: boolean;
 };
 
-export type StaleAnswerInput =
+type StaleAnswerInput =
   | { kind: "review"; expectedStage: Stage; progress: Progress | null }
   | { kind: "introduce"; progress: Progress | null };
 

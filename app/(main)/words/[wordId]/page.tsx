@@ -38,13 +38,13 @@ export default async function WordPage({ params }: WordPageProps) {
     <div className="space-y-4">
       <Link
         href="/words"
-        className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink"
+        className="inline-flex min-h-11 items-center gap-1 text-sm text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <ArrowLeft aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />
         Words
       </Link>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
-        <WordCard word={word} />
+        <WordCard word={word} headingLevel="h1" />
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="font-serif text-xl font-semibold text-ink">
             Progress
@@ -55,8 +55,10 @@ export default async function WordPage({ params }: WordPageProps) {
               <dd className="font-medium text-ink">{STATUS_LABELS[status]}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-muted">Group</dt>
-              <dd className="text-right font-medium text-ink">{groupLabel}</dd>
+              <dt className="shrink-0 text-muted">Group</dt>
+              <dd className="min-w-0 break-words text-right font-medium text-ink">
+                {groupLabel}
+              </dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-muted">Stage</dt>
@@ -65,8 +67,8 @@ export default async function WordPage({ params }: WordPageProps) {
               </dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-muted">Next due</dt>
-              <dd className="text-right font-medium text-ink">
+              <dt className="shrink-0 text-muted">Next due</dt>
+              <dd className="min-w-0 break-words text-right font-medium text-ink">
                 {progress?.dueDate
                   ? formatLongDate(progress.dueDate)
                   : "Not scheduled"}

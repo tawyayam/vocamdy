@@ -55,7 +55,7 @@ export function SessionCard({
           <Check aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
           <h2 className="font-serif text-xl font-semibold">Deck complete</h2>
         </div>
-        <p className="mt-3 text-sm text-muted">
+        <p className="mt-3 break-words text-sm text-muted">
           You have learned every word in {deckName}.
         </p>
       </section>

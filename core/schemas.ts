@@ -52,12 +52,6 @@ export const answerInputSchema = z.discriminatedUnion("kind", [
   completionSchema,
 ]);
 
-export type ReviewAnswerPayload = z.infer<typeof reviewAnswerSchema>;
-export type IntroducedWordPayload = z.infer<typeof introducedWordSchema>;
-export type ExtraAttemptPayload = z.infer<typeof extraAttemptSchema>;
-export type CompletionPayload = z.infer<typeof completionSchema>;
-export type AnswerInput = z.infer<typeof answerInputSchema>;
-
 export function answerInputForServerDay(serverStudyDay: string) {
   return answerInputSchema.refine(
     (value) =>
@@ -80,8 +74,6 @@ export const settingsInputSchema = z.object({
   batchSize: z.number().int().min(3).max(10),
   backlogCap: z.number().int().min(10).max(100),
 });
-
-export type SettingsInput = z.infer<typeof settingsInputSchema>;
 
 const exportStageSchema = z.union([
   z.literal(1),

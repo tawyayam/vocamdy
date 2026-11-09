@@ -24,7 +24,7 @@ export function typedHint(answer: string): string {
     .join("");
 }
 
-export type TypedAnswerResult = {
+type TypedAnswerResult = {
   correct: boolean;
   formNote: string | null;
 };

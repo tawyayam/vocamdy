@@ -7,6 +7,7 @@ import type { Word } from "@/core/types";
 type WordCardProps = {
   word: Word;
   id?: string;
+  headingLevel?: "h1" | "h2" | "h3";
 };
 
 function ExampleSentence({ word }: { word: Word }) {
@@ -21,14 +22,14 @@ function ExampleSentence({ word }: { word: Word }) {
     word.example.slice(cloze.start, cloze.end) !== cloze.form
   ) {
     return (
-      <p className="mt-3 font-serif text-base leading-7 text-muted">
+      <p className="mt-3 break-words font-serif text-base leading-7 text-muted">
         {word.example}
       </p>
     );
   }
 
   return (
-    <p className="mt-3 font-serif text-base leading-7 text-muted">
+    <p className="mt-3 break-words font-serif text-base leading-7 text-muted">
       {word.example.slice(0, cloze.start)}
       <mark className="rounded bg-highlight px-0.5 text-ink">
         {cloze.form}
@@ -38,8 +39,13 @@ function ExampleSentence({ word }: { word: Word }) {
   );
 }
 
-export function WordCard({ word, id }: WordCardProps) {
+export function WordCard({
+  word,
+  id,
+  headingLevel = "h2",
+}: WordCardProps) {
   const [canSpeak, setCanSpeak] = useState(false);
+  const Heading = headingLevel;
 
   useEffect(() => {
     const update = () =>
@@ -64,18 +70,18 @@ export function WordCard({ word, id }: WordCardProps) {
   return (
     <article
       id={id}
-      className="scroll-mt-24 rounded-2xl border border-border bg-card p-5"
+      className="min-w-0 scroll-mt-24 rounded-2xl border border-border bg-card p-5"
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           {word.pos ? (
             <span className="inline-flex rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium uppercase tracking-[0.16em] text-primary">
               {word.pos}
             </span>
           ) : null}
-          <h2 className="mt-1 font-serif text-3xl font-semibold text-ink">
+          <Heading className="mt-1 break-words font-serif text-3xl font-semibold text-ink">
             {word.word}
-          </h2>
+          </Heading>
         </div>
         {canSpeak ? (
           <button
@@ -88,13 +94,15 @@ export function WordCard({ word, id }: WordCardProps) {
           </button>
         ) : null}
       </div>
-      <p className="mt-3 text-base leading-7 text-ink">{word.definition}</p>
+      <p className="mt-3 break-words text-base leading-7 text-ink">
+        {word.definition}
+      </p>
       <ExampleSentence word={word} />
       {word.arabic ? (
         <p
           dir="rtl"
           lang="ar"
-          className="mt-4 font-arabic text-xl text-muted"
+          className="mt-4 break-words font-arabic text-xl text-muted"
         >
           {word.arabic}
         </p>

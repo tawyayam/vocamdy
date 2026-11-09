@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   IBM_Plex_Sans,
   IBM_Plex_Sans_Arabic,
@@ -28,6 +28,13 @@ const newsreader = Newsreader({
 export const metadata: Metadata = {
   title: "Vocamdy",
   description: "Daily practice for the Academic Word List.",
+  icons: {
+    apple: "/icons/apple-touch-icon-180.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#F6F1E7",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

@@ -1,14 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { exportDataSchema, type ExportData } from "@/core/schemas";
 import type { Database } from "./database.types";
+import { fetchAllPages } from "./pagination";
 import { ensureUserSettings } from "./settings";
 
 type SupabaseServerClient = SupabaseClient<Database, "public">;
 type SettingsRow = Database["public"]["Tables"]["user_settings"]["Row"];
 type ProgressRow = Database["public"]["Tables"]["word_progress"]["Row"];
 type ActivityRow = Database["public"]["Tables"]["daily_activity"]["Row"];
-
-const PAGE_SIZE = 1000;
 
 async function getSettingsRow(
   supabase: SupabaseServerClient,
@@ -33,54 +32,28 @@ async function getProgressRows(
   supabase: SupabaseServerClient,
   userId: string,
 ): Promise<ProgressRow[]> {
-  const rows: ProgressRow[] = [];
-
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
+  return fetchAllPages((from, to) =>
+    supabase
       .from("word_progress")
       .select("*")
       .eq("user_id", userId)
       .order("word_id")
-      .range(from, from + PAGE_SIZE - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    const page = data ?? [];
-    rows.push(...page);
-
-    if (page.length < PAGE_SIZE) {
-      return rows;
-    }
-  }
+      .range(from, to),
+  );
 }
 
 async function getActivityRows(
   supabase: SupabaseServerClient,
   userId: string,
 ): Promise<ActivityRow[]> {
-  const rows: ActivityRow[] = [];
-
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
+  return fetchAllPages((from, to) =>
+    supabase
       .from("daily_activity")
       .select("*")
       .eq("user_id", userId)
       .order("study_day")
-      .range(from, from + PAGE_SIZE - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    const page = data ?? [];
-    rows.push(...page);
-
-    if (page.length < PAGE_SIZE) {
-      return rows;
-    }
-  }
+      .range(from, to),
+  );
 }
 
 export async function getExportSnapshot(

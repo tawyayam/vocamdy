@@ -3,7 +3,7 @@ import type { Activity } from "./types";
 
 export const WEEKLY_GOAL = 5;
 
-export type WeekDay = {
+type WeekDay = {
   studyDay: string;
   active: boolean;
   isToday: boolean;

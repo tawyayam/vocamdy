@@ -54,18 +54,22 @@ export function QuizFeedback({
       </div>
 
       {!correct ? (
-        <p className="mt-2 text-sm text-ink">
+        <p className="mt-2 break-words text-sm text-ink">
           Answer: <span className="font-semibold">{answer}</span>
         </p>
       ) : null}
 
-      {formNote ? <p className="mt-2 text-sm text-muted">{formNote}</p> : null}
+      {formNote ? (
+        <p className="mt-2 break-words text-sm text-muted">{formNote}</p>
+      ) : null}
 
       {!correct ? (
         <>
-          <p className="mt-3 text-sm text-ink">{word.definition}</p>
+          <p className="mt-3 break-words text-sm text-ink">
+            {word.definition}
+          </p>
           {word.example ? (
-            <p className="mt-1 font-serif text-sm leading-6 text-muted">
+            <p className="mt-1 break-words font-serif text-sm leading-6 text-muted">
               {word.example}
             </p>
           ) : null}
@@ -73,7 +77,11 @@ export function QuizFeedback({
       ) : null}
 
       {word.arabic ? (
-        <p dir="rtl" lang="ar" className="mt-2 font-arabic text-lg text-ink">
+        <p
+          dir="rtl"
+          lang="ar"
+          className="mt-2 break-words font-arabic text-lg text-ink"
+        >
           {word.arabic}
         </p>
       ) : null}

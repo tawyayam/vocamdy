@@ -10,7 +10,7 @@ import type {
   Word,
 } from "./types";
 
-export type PlannerInput = {
+type PlannerInput = {
   deck: Deck;
   progress: Progress[];
   activity: Activity | null;
@@ -18,7 +18,7 @@ export type PlannerInput = {
   studyDay: string;
 };
 
-export type MiniSession = {
+type MiniSession = {
   reviews: Progress[];
   newWords: Word[];
 };
@@ -132,15 +132,15 @@ export function buildTodayState(input: PlannerInput): TodayState {
   };
 }
 
-export type NewBatchMode = "required" | "extra";
+type NewBatchMode = "required" | "extra";
 
-export type NewBatchPlan = {
+type NewBatchPlan = {
   mode: NewBatchMode;
   words: Word[];
   isLastForDay: boolean;
 };
 
-export type NewBatchInput = {
+type NewBatchInput = {
   candidates: readonly Word[];
   introducedToday: number;
   dailyNew: number;
@@ -193,14 +193,14 @@ export function planNewBatch(input: NewBatchInput): NewBatchPlan {
   };
 }
 
-export type ReviewBlockInput = {
+type ReviewBlockInput = {
   state: TodayState;
   candidates: readonly Word[];
   dailyNew: number;
   batchSize: number;
 };
 
-export type ReviewBlockPlan = {
+type ReviewBlockPlan = {
   nextBatch: NewBatchPlan;
   completesDay: boolean;
 };

@@ -1,6 +1,6 @@
-import Image from "next/image";
 import { GoogleSignInForm } from "@/features/auth/components/google-sign-in-form";
 import { safeRedirectPath } from "@/core/redirect";
+import { ThemeLogo } from "@/components/ui/theme-logo";
 
 const errorMessages: Record<string, string> = {
   missing_code: "Google sign-in was cancelled or incomplete. Please try again.",
@@ -20,13 +20,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-12">
       <section className="w-full max-w-sm text-center">
-        <Image
-          src="/icons/logo-1024.png"
+        <ThemeLogo
           alt="Vocamdy"
-          width={96}
-          height={96}
-          priority
-          className="mx-auto h-24 w-24 rounded-2xl"
+          size={96}
+          fetchPriority="high"
+          className="mx-auto h-24 w-24"
         />
         <h1 className="mt-6 font-serif text-4xl font-semibold text-ink">
           Vocamdy

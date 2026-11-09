@@ -2,7 +2,7 @@ import type { Cloze } from "./types";
 
 const SUFFIXES = ["s", "es", "d", "ed", "ing", "ly"];
 
-export type ClozeDetection = {
+type ClozeDetection = {
   cloze: Cloze | null;
   blankFormNotFound: boolean;
 };

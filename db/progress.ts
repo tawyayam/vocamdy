@@ -2,39 +2,26 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Progress } from "@/core/types";
 import type { Database } from "./database.types";
 import { toProgress, toProgressRow } from "./mappers";
+import { fetchAllPages } from "./pagination";
 
 type SupabaseServerClient = SupabaseClient<Database, "public">;
-
-const PROGRESS_PAGE_SIZE = 1000;
 
 export async function getProgressForDeck(
   supabase: SupabaseServerClient,
   userId: string,
   deckId: string,
 ): Promise<Progress[]> {
-  const progress: Progress[] = [];
-
-  for (let from = 0; ; from += PROGRESS_PAGE_SIZE) {
-    // Supabase returns at most 1000 rows per query, so keep paging until a short page.
-    const { data, error } = await supabase
+  const rows = await fetchAllPages((from, to) =>
+    supabase
       .from("word_progress")
       .select("*")
       .eq("user_id", userId)
       .eq("deck_id", deckId)
       .order("word_id")
-      .range(from, from + PROGRESS_PAGE_SIZE - 1);
+      .range(from, to),
+  );
 
-    if (error) {
-      throw error;
-    }
-
-    const page = data ?? [];
-    progress.push(...page.map(toProgress));
-
-    if (page.length < PROGRESS_PAGE_SIZE) {
-      return progress;
-    }
-  }
+  return rows.map(toProgress);
 }
 
 export async function getProgressForWord(

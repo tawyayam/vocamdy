@@ -27,9 +27,9 @@ export function LearnScreen({ words, onStart }: LearnScreenProps) {
     <div className="mx-auto w-full max-w-[960px] px-4 py-6">
       <header className="flex items-start gap-3">
         <SessionExit />
-        <div>
+        <div className="min-w-0">
           <p className="text-sm text-muted">New words</p>
-          <h1 className="mt-1 font-serif text-3xl font-semibold text-ink">
+          <h1 className="mt-1 break-words font-serif text-3xl font-semibold text-ink">
             Learn the batch first.
           </h1>
           <p className="mt-2 text-sm text-muted">
