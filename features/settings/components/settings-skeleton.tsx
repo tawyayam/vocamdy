@@ -5,9 +5,16 @@ export function SettingsSkeleton() {
         <div className="h-4 w-16 animate-pulse rounded bg-primary-soft motion-reduce:animate-none" />
         <div className="h-9 w-36 animate-pulse rounded-lg bg-primary-soft motion-reduce:animate-none" />
       </div>
-      <div className="h-52 animate-pulse rounded-2xl border border-border bg-card motion-reduce:animate-none" />
-      <div className="h-40 animate-pulse rounded-2xl border border-border bg-card motion-reduce:animate-none" />
-      <div className="h-44 animate-pulse rounded-2xl border border-border bg-card motion-reduce:animate-none" />
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="space-y-4">
+          <div className="h-80 animate-pulse rounded-2xl border border-border bg-card motion-reduce:animate-none" />
+          <div className="h-40 animate-pulse rounded-2xl border border-border bg-card motion-reduce:animate-none" />
+        </div>
+        <div className="space-y-4">
+          <div className="h-36 animate-pulse rounded-2xl border border-border bg-card motion-reduce:animate-none" />
+          <div className="h-52 animate-pulse rounded-2xl border border-border bg-card motion-reduce:animate-none" />
+        </div>
+      </div>
     </div>
   );
 }

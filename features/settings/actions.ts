@@ -50,6 +50,7 @@ export async function saveSettings(
 
     await saveUserSettings(supabase, userId, parsed.data);
     revalidatePath("/");
+    revalidatePath("/session");
     revalidatePath("/progress");
 
     return { ok: true, settings: parsed.data };

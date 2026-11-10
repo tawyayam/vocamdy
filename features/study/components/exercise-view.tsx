@@ -1,7 +1,16 @@
 "use client";
 
 import { Eye } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
+import {
+  choiceIndexForNumberKey,
+  moveChoiceIndex,
+} from "@/core/choice-navigation";
 import type { ChoiceExercise, Exercise, Word } from "@/core/types";
 import { PeekSheet } from "./peek-sheet";
 import { QuizFeedback, type QuizSaveState } from "./quiz-feedback";
@@ -82,7 +91,7 @@ export function ExerciseView({
 }: ExerciseViewProps) {
   const [peekOpen, setPeekOpen] = useState(false);
   const typedInputRef = useRef<HTMLInputElement>(null);
-  const firstChoiceRef = useRef<HTMLButtonElement>(null);
+  const choiceRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const choiceExercise = isChoiceExercise(exercise) ? exercise : null;
   const typedExercise =
     exercise.kind === "type_definition" || exercise.kind === "type_cloze"
@@ -99,7 +108,7 @@ export function ExerciseView({
     if (typedExercise) {
       typedInputRef.current?.focus();
     } else {
-      firstChoiceRef.current?.focus();
+      choiceRefs.current[0]?.focus();
     }
   }, [exercise, typedExercise]);
 
@@ -122,21 +131,44 @@ export function ExerciseView({
         return;
       }
 
-      const index = Number.parseInt(event.key, 10);
+      const index = choiceIndexForNumberKey(
+        event.key,
+        choiceExercise.options.length,
+      );
 
-      if (
-        Number.isInteger(index) &&
-        index >= 1 &&
-        index <= choiceExercise.options.length
-      ) {
+      if (index !== null) {
         event.preventDefault();
-        onSubmit(choiceExercise.options[index - 1]);
+        onSubmit(choiceExercise.options[index]);
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
+
+  function handleChoiceKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) {
+    if (
+      !choiceExercise ||
+      (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    const step = event.key === "ArrowDown" ? 1 : -1;
+    const nextIndex = moveChoiceIndex(
+      index,
+      step,
+      choiceExercise.options.length,
+    );
+
+    if (nextIndex >= 0) {
+      choiceRefs.current[nextIndex]?.focus();
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-[640px] px-4 py-6">
@@ -209,16 +241,19 @@ export function ExerciseView({
               return (
                 <button
                   key={option}
-                  ref={index === 0 ? firstChoiceRef : undefined}
+                  ref={(element) => {
+                    choiceRefs.current[index] = element;
+                  }}
                   type="button"
                   disabled={feedback !== null}
                   onClick={() => onSubmit(option)}
+                  onKeyDown={(event) => handleChoiceKeyDown(event, index)}
                   dir={optionsAreArabic ? "rtl" : undefined}
                   lang={optionsAreArabic ? "ar" : undefined}
                   className={
                     optionsAreArabic
-                      ? `flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 text-right font-arabic text-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default ${optionClass}`
-                      : `flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 text-left text-base transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default ${optionClass}`
+                      ? `flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 text-right font-arabic text-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${optionClass}`
+                      : `flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 text-left text-base transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${optionClass}`
                   }
                 >
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current text-xs">
@@ -257,12 +292,12 @@ export function ExerciseView({
               autoCapitalize="none"
               spellCheck={false}
               aria-describedby="exercise-hint"
-              className="mt-2 min-h-12 w-full rounded-xl border border-border bg-paper px-4 py-3 text-base text-ink outline-none transition-colors focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default disabled:text-muted"
+              className="mt-2 min-h-12 w-full rounded-xl border border-border bg-paper px-4 py-3 text-base text-ink outline-none transition-colors focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:text-muted"
             />
             <button
               type="submit"
               disabled={feedback !== null}
-              className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary/90 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               Check
             </button>
@@ -273,7 +308,7 @@ export function ExerciseView({
           type="button"
           onClick={() => onSubmit(null)}
           disabled={feedback !== null}
-          className="mt-3 min-h-11 w-full rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-default disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="mt-3 min-h-11 w-full rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           I don&apos;t know
         </button>

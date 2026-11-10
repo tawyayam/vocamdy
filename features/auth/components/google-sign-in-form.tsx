@@ -33,7 +33,7 @@ export function GoogleSignInForm({
       <button
         type="submit"
         disabled={isPending}
-        className="min-h-12 w-full rounded-xl bg-primary px-4 py-3 font-medium text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60"
+        className="min-h-12 w-full rounded-xl bg-primary px-4 py-3 font-medium text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60"
       >
         {isPending ? "Connecting..." : "Continue with Google"}
       </button>

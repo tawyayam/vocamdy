@@ -3,9 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeLogo } from "@/components/ui/theme-logo";
+import { SignOutForm } from "@/features/auth/components/sign-out-form";
 import { isActivePath, navigationItems } from "./navigation";
 
-export function SidebarNav() {
+type SidebarNavProps = {
+  email: string | null;
+};
+
+export function SidebarNav({ email }: SidebarNavProps) {
   const pathname = usePathname();
 
   return (
@@ -48,6 +53,15 @@ export function SidebarNav() {
           })}
         </ul>
       </nav>
+      <div className="mt-auto space-y-3 border-t border-border pt-4">
+        <p
+          className="truncate text-xs text-muted"
+          title={email ?? undefined}
+        >
+          {email ?? "Signed in"}
+        </p>
+        <SignOutForm showIcon className="w-full" />
+      </div>
     </aside>
   );
 }

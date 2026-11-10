@@ -7,8 +7,17 @@ type SessionCardProps = {
   state: TodayState;
   deckName: string;
   hasAnswers: boolean;
+  repeatsGreeting: boolean;
   miniCount: number;
 };
+
+function getSessionTitle(hasAnswers: boolean, repeatsGreeting: boolean) {
+  if (!hasAnswers) {
+    return "Ready when you are.";
+  }
+
+  return repeatsGreeting ? "Today's session" : "Pick up where you stopped.";
+}
 
 const primaryButtonClassName =
   "flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-medium text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
@@ -32,6 +41,7 @@ export function SessionCard({
   state,
   deckName,
   hasAnswers,
+  repeatsGreeting,
   miniCount,
 }: SessionCardProps) {
   if (state.status === "complete") {
@@ -94,7 +104,7 @@ export function SessionCard({
         {countLabel(state.dueReviews.length, "review")}
       </p>
       <h2 className="mt-2 font-serif text-2xl font-semibold text-ink">
-        {hasAnswers ? "Pick up where you stopped." : "Ready when you are."}
+        {getSessionTitle(hasAnswers, repeatsGreeting)}
       </h2>
       <div className="mt-5 space-y-3">
         <Link href="/session" className={primaryButtonClassName}>

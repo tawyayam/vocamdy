@@ -1,8 +1,9 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { Sprout } from "lucide-react";
 import { useMemo } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SignOutForm } from "@/features/auth/components/sign-out-form";
 import { daysBetweenStudyDays } from "@/core/day";
 import { buildTodayState, planMiniSession } from "@/core/planner";
 import { summarizeProgress } from "@/core/progress-summary";
@@ -123,14 +124,21 @@ export function TodayView({
   if (isBrandNew) {
     return (
       <div className="space-y-4">
-        <header>
-          <p className="text-sm text-muted">{formatStudyDay(studyDay)}</p>
-          <h1 className="mt-1 font-serif text-3xl font-semibold text-ink">
-            Welcome to Vocamdy.
-          </h1>
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm text-muted">{formatStudyDay(studyDay)}</p>
+            <h1 className="mt-1 font-serif text-3xl font-semibold text-ink">
+              Welcome to Vocamdy.
+            </h1>
+          </div>
+          <SignOutForm
+            iconOnly
+            confirm
+            className="shrink-0 lg:hidden"
+          />
         </header>
         <EmptyState
-          icon={Sparkles}
+          icon={Sprout}
           title="Start your first session"
           description="Learn a small batch of words, then answer a few quick questions."
           action={{ href: "/session", label: "Start first session" }}
@@ -148,14 +156,19 @@ export function TodayView({
 
   return (
     <div className="space-y-4">
-      <header>
-        <p className="text-sm text-muted">{formatStudyDay(studyDay)}</p>
-        <h1 className="mt-1 font-serif text-3xl font-semibold text-ink">
-          {headline}
-        </h1>
-        {welcomeBack ? (
-          <p className="mt-2 text-muted">Let&apos;s pick up where you stopped.</p>
-        ) : null}
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm text-muted">{formatStudyDay(studyDay)}</p>
+          <h1 className="mt-1 font-serif text-3xl font-semibold text-ink">
+            {headline}
+          </h1>
+          {welcomeBack ? (
+            <p className="mt-2 text-muted">
+              Let&apos;s pick up where you stopped.
+            </p>
+          ) : null}
+        </div>
+        <SignOutForm iconOnly confirm className="shrink-0 lg:hidden" />
       </header>
       {noticeMessage ? (
         <p
@@ -171,6 +184,7 @@ export function TodayView({
             state={state}
             deckName={summary.name}
             hasAnswers={hasAnswers}
+            repeatsGreeting={welcomeBack}
             miniCount={miniCount}
           />
           <TomorrowPreview preview={state.tomorrow} />

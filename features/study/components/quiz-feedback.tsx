@@ -1,6 +1,7 @@
 "use client";
 
 import { CircleCheck, CircleX } from "lucide-react";
+import { useEffect, useRef } from "react";
 import type { Word } from "@/core/types";
 
 export type QuizSaveState = "idle" | "saving" | "saved" | "failed";
@@ -28,6 +29,14 @@ export function QuizFeedback({
   onRetry,
   onContinue,
 }: QuizFeedbackProps) {
+  const actionRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (saveState === "saved" || saveState === "failed") {
+      actionRef.current?.focus();
+    }
+  }, [saveState]);
+
   return (
     <div
       role="status"
@@ -89,6 +98,7 @@ export function QuizFeedback({
       <div className="mt-4">
         {saveState === "failed" ? (
           <button
+            ref={actionRef}
             type="button"
             onClick={onRetry}
             className="flex min-h-11 w-full items-center justify-center rounded-xl border border-warn/40 bg-card px-4 py-2 text-sm font-medium text-warn transition-colors hover:border-warn focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-warn"
@@ -97,10 +107,11 @@ export function QuizFeedback({
           </button>
         ) : (
           <button
+            ref={actionRef}
             type="button"
             onClick={onContinue}
             disabled={saveState !== "saved"}
-            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary/90 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             {saveState === "saved"
               ? finish

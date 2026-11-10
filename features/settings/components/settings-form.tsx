@@ -1,67 +1,42 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import {
+  BACKLOG_CAP_OPTIONS,
+  BATCH_SIZE_OPTIONS,
+  DAILY_NEW_OPTIONS,
+  choicesWithStoredValue,
+} from "@/core/settings-options";
 import type { Settings } from "@/core/types";
 import { saveSettings } from "../actions";
 import type { SettingsActionResult } from "../state";
+import { ChoiceGroup } from "./choice-group";
 
 type SettingsFormProps = {
   settings: Settings;
 };
 
-type NumberFieldProps = {
-  id: string;
-  name: string;
-  label: string;
-  description: string;
-  min: number;
-  max: number;
-  defaultValue: number;
-  disabled: boolean;
-};
-
 const initialState: SettingsActionResult | null = null;
-
-function NumberField({
-  id,
-  name,
-  label,
-  description,
-  min,
-  max,
-  defaultValue,
-  disabled,
-}: NumberFieldProps) {
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm font-medium text-ink">
-        {label}
-      </label>
-      <input
-        id={id}
-        name={name}
-        type="number"
-        inputMode="numeric"
-        min={min}
-        max={max}
-        step={1}
-        defaultValue={defaultValue}
-        disabled={disabled}
-        required
-        aria-describedby={`${id}-description`}
-        className="mt-2 h-11 w-full rounded-xl border border-border bg-paper px-3 text-sm text-ink outline-none focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60"
-      />
-      <p id={`${id}-description`} className="mt-1 text-xs text-muted">
-        {description}
-      </p>
-    </div>
-  );
-}
 
 export function SettingsForm({ settings }: SettingsFormProps) {
   const [state, formAction, pending] = useActionState(
     saveSettings,
     initialState,
+  );
+  const [dailyNew, setDailyNew] = useState(settings.dailyNew);
+  const [batchSize, setBatchSize] = useState(settings.batchSize);
+  const [backlogCap, setBacklogCap] = useState(settings.backlogCap);
+  const dailyNewOptions = choicesWithStoredValue(
+    DAILY_NEW_OPTIONS,
+    settings.dailyNew,
+  );
+  const batchSizeOptions = choicesWithStoredValue(
+    BATCH_SIZE_OPTIONS,
+    settings.batchSize,
+  );
+  const backlogCapOptions = choicesWithStoredValue(
+    BACKLOG_CAP_OPTIONS,
+    settings.backlogCap,
   );
 
   return (
@@ -71,35 +46,32 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         These values apply to your next session.
       </p>
       <form action={formAction} className="mt-4 space-y-4">
-        <NumberField
-          id="daily-new"
+        <ChoiceGroup
           name="dailyNew"
           label="New words a day"
-          description="How many new words Today plans each day (1 to 30)."
-          min={1}
-          max={30}
-          defaultValue={settings.dailyNew}
+          description="How many new words you learn each day."
+          options={dailyNewOptions}
+          value={dailyNew}
           disabled={pending}
+          onChange={setDailyNew}
         />
-        <NumberField
-          id="batch-size"
+        <ChoiceGroup
           name="batchSize"
-          label="Batch size"
-          description="How many new words are shown together (3 to 10)."
-          min={3}
-          max={10}
-          defaultValue={settings.batchSize}
+          label="Words per round"
+          description="You read this many new words together, then take a short quiz on them."
+          options={batchSizeOptions}
+          value={batchSize}
           disabled={pending}
+          onChange={setBatchSize}
         />
-        <NumberField
-          id="backlog-cap"
+        <ChoiceGroup
           name="backlogCap"
-          label="Backlog limit"
-          description="Pause new words when overdue reviews reach this count (10 to 100)."
-          min={10}
-          max={100}
-          defaultValue={settings.backlogCap}
+          label="Pause new words after"
+          description="When more than this many reviews are overdue, new words pause until you catch up."
+          options={backlogCapOptions}
+          value={backlogCap}
           disabled={pending}
+          onChange={setBacklogCap}
         />
         {state?.ok ? (
           <p role="status" className="text-sm text-ink">
@@ -114,7 +86,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         <button
           type="submit"
           disabled={pending}
-          className="min-h-11 rounded-xl bg-primary px-4 py-2 font-medium text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-11 rounded-xl bg-primary px-4 py-2 font-medium text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60"
         >
           {pending ? "Saving..." : "Save changes"}
         </button>

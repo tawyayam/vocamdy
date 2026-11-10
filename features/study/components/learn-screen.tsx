@@ -62,11 +62,11 @@ export function LearnScreen({ words, onStart }: LearnScreenProps) {
         ))}
       </div>
 
-      <div className="mt-6 flex justify-center">
+      <div className="mt-6">
         <button
           type="button"
           onClick={onStart}
-          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-medium text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:max-w-sm"
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-medium text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           Start quiz
           <ArrowRight aria-hidden="true" className="h-4 w-4" />

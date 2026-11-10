@@ -28,9 +28,6 @@ const newsreader = Newsreader({
 export const metadata: Metadata = {
   title: "Vocamdy",
   description: "Daily practice for the Academic Word List.",
-  icons: {
-    apple: "/icons/apple-touch-icon-180.png",
-  },
 };
 
 export const viewport: Viewport = {
