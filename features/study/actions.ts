@@ -2,10 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getDeck } from "@/content/decks";
-import {
-  answerInputForServerDay,
-  reviewWordIdsSchema,
-} from "@/core/schemas";
+import { answerInputForServerDay } from "@/core/schemas";
 import {
   answerReview,
   introduceWord,
@@ -19,7 +16,6 @@ import { createSupabaseServerClient } from "@/db/server";
 import { getUserSettings } from "@/db/settings";
 import type {
   CompletionActionResult,
-  ReviewWordsResult,
   StudyActionResult,
 } from "./types";
 
@@ -27,7 +23,6 @@ const AUTH_ERROR = "Please sign in again.";
 const DECK_ERROR = "Couldn't load your deck.";
 const WORD_ERROR = "That word is not in your deck.";
 const SAVE_ERROR = "Couldn't save. Please try again.";
-const LOAD_ERROR = "Couldn't load your reviews. Please try again.";
 
 type StudySession = {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -98,19 +93,23 @@ function recordCompletion(
   return { ...activity, completed };
 }
 
-async function recordActivityAfterProgress(
+async function readActivityForAnswer(
   session: StudySession,
   studyDay: string,
-  counts: { newWord?: boolean; review?: boolean } = {},
+): Promise<Activity | null | undefined> {
+  try {
+    return await getActivityForDay(session.supabase, session.userId, studyDay);
+  } catch (error) {
+    console.error("Could not read daily activity for an answer.", error);
+    return undefined;
+  }
+}
+
+async function saveActivityBestEffort(
+  session: StudySession,
+  activity: Activity,
 ): Promise<Activity | null> {
   try {
-    const current = await getActivityForDay(
-      session.supabase,
-      session.userId,
-      studyDay,
-    );
-    const activity = recordAnswer(current, studyDay, counts);
-
     await saveActivity(session.supabase, session.userId, activity);
     return activity;
   } catch (error) {
@@ -137,40 +136,6 @@ async function getDeckAndWord(
   return { ok: true, deckId: deck.id };
 }
 
-export async function loadReviewWords(raw: unknown): Promise<ReviewWordsResult> {
-  try {
-    const session = await getStudySession();
-
-    if (!session) {
-      return { ok: false, error: AUTH_ERROR };
-    }
-
-    const parsed = reviewWordIdsSchema.safeParse(raw);
-
-    if (!parsed.success) {
-      return { ok: false, error: LOAD_ERROR };
-    }
-
-    const settings = await getUserSettings(session.supabase, session.userId);
-    const deck = getDeck(settings.activeDeckId);
-
-    if (!deck) {
-      return { ok: false, error: DECK_ERROR };
-    }
-
-    const wordsById = new Map(deck.words.map((word) => [word.id, word]));
-    const words = parsed.data.flatMap((wordId) => {
-      const word = wordsById.get(wordId);
-      return word ? [word] : [];
-    });
-
-    return { ok: true, words };
-  } catch (error) {
-    console.error("Could not load the review words.", error);
-    return { ok: false, error: LOAD_ERROR };
-  }
-}
-
 export async function submitReviewAnswer(raw: unknown): Promise<StudyActionResult> {
   try {
     const session = await getStudySession();
@@ -186,17 +151,15 @@ export async function submitReviewAnswer(raw: unknown): Promise<StudyActionResul
     }
 
     const input = parsed.data;
-    const deckAndWord = await getDeckAndWord(session, input.wordId);
+    const [deckAndWord, stored, currentActivity] = await Promise.all([
+      getDeckAndWord(session, input.wordId),
+      getProgressForWord(session.supabase, session.userId, input.wordId),
+      readActivityForAnswer(session, input.studyDay),
+    ]);
 
     if (!deckAndWord.ok) {
       return deckAndWord;
     }
-
-    const stored = await getProgressForWord(
-      session.supabase,
-      session.userId,
-      input.wordId,
-    );
 
     if (
       !stored ||
@@ -216,13 +179,19 @@ export async function submitReviewAnswer(raw: unknown): Promise<StudyActionResul
       studyDay: input.studyDay,
       firstAttempt: true,
     });
+    const activity =
+      currentActivity === undefined
+        ? null
+        : recordAnswer(currentActivity, input.studyDay, { review: true });
 
-    await saveProgress(session.supabase, session.userId, progress);
-    const activity = await recordActivityAfterProgress(session, input.studyDay, {
-      review: true,
-    });
+    const [, savedActivity] = await Promise.all([
+      saveProgress(session.supabase, session.userId, progress),
+      activity
+        ? saveActivityBestEffort(session, activity)
+        : Promise.resolve(null),
+    ]);
 
-    return { ok: true, stale: false, progress, activity };
+    return { ok: true, stale: false, progress, activity: savedActivity };
   } catch (error) {
     console.error("Could not save the review answer.", error);
     return { ok: false, error: SAVE_ERROR };
@@ -246,17 +215,15 @@ export async function submitIntroducedWord(
     }
 
     const input = parsed.data;
-    const deckAndWord = await getDeckAndWord(session, input.wordId);
+    const [deckAndWord, stored, currentActivity] = await Promise.all([
+      getDeckAndWord(session, input.wordId),
+      getProgressForWord(session.supabase, session.userId, input.wordId),
+      readActivityForAnswer(session, input.studyDay),
+    ]);
 
     if (!deckAndWord.ok) {
       return deckAndWord;
     }
-
-    const stored = await getProgressForWord(
-      session.supabase,
-      session.userId,
-      input.wordId,
-    );
 
     if (isStaleAnswer({ kind: "introduce", progress: stored })) {
       return { ok: true, stale: true, progress: stored, activity: null };
@@ -268,13 +235,19 @@ export async function submitIntroducedWord(
       studyDay: input.studyDay,
       wrongCount: input.wrongCount,
     });
+    const activity =
+      currentActivity === undefined
+        ? null
+        : recordAnswer(currentActivity, input.studyDay, { newWord: true });
 
-    await saveProgress(session.supabase, session.userId, progress);
-    const activity = await recordActivityAfterProgress(session, input.studyDay, {
-      newWord: true,
-    });
+    const [, savedActivity] = await Promise.all([
+      saveProgress(session.supabase, session.userId, progress),
+      activity
+        ? saveActivityBestEffort(session, activity)
+        : Promise.resolve(null),
+    ]);
 
-    return { ok: true, stale: false, progress, activity };
+    return { ok: true, stale: false, progress, activity: savedActivity };
   } catch (error) {
     console.error("Could not save the introduced word.", error);
     return { ok: false, error: SAVE_ERROR };
@@ -298,17 +271,15 @@ export async function submitExtraAttempt(
     }
 
     const input = parsed.data;
-    const deckAndWord = await getDeckAndWord(session, input.wordId);
+    const [deckAndWord, currentActivity] = await Promise.all([
+      getDeckAndWord(session, input.wordId),
+      getActivityForDay(session.supabase, session.userId, input.studyDay),
+    ]);
 
     if (!deckAndWord.ok) {
       return deckAndWord;
     }
 
-    const currentActivity = await getActivityForDay(
-      session.supabase,
-      session.userId,
-      input.studyDay,
-    );
     const activity = recordAnswer(currentActivity, input.studyDay);
 
     await saveActivity(session.supabase, session.userId, activity);

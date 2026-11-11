@@ -11,9 +11,11 @@ import {
   choiceIndexForNumberKey,
   moveChoiceIndex,
 } from "@/core/choice-navigation";
+import type { SaveQueueStatus } from "@/core/save-queue";
 import type { ChoiceExercise, Exercise, Word } from "@/core/types";
 import { PeekSheet } from "./peek-sheet";
-import { QuizFeedback, type QuizSaveState } from "./quiz-feedback";
+import { QuizFeedback } from "./quiz-feedback";
+import { SaveFailureBanner, SaveStatus } from "./save-status";
 import { SessionExit } from "./session-exit";
 
 export type ExerciseFeedback = {
@@ -31,7 +33,10 @@ type ExerciseViewProps = {
   selected: string | null;
   typed: string;
   feedback: ExerciseFeedback | null;
-  saveState: QuizSaveState;
+  saveStatus: SaveQueueStatus;
+  unsavedCount: number;
+  isDrained: boolean;
+  isBlocked: boolean;
   finish: boolean;
   finishLabel?: string;
   needsExitConfirmation: boolean;
@@ -79,7 +84,10 @@ export function ExerciseView({
   selected,
   typed,
   feedback,
-  saveState,
+  saveStatus,
+  unsavedCount,
+  isDrained,
+  isBlocked,
   finish,
   finishLabel,
   needsExitConfirmation,
@@ -119,7 +127,12 @@ export function ExerciseView({
       }
 
       if (feedback) {
-        if (event.key === "Enter" && saveState === "saved") {
+        const target = event.target;
+        const onControl =
+          target instanceof HTMLElement &&
+          target.closest("button, a, input, textarea, select") !== null;
+
+        if (event.key === "Enter" && !onControl) {
           event.preventDefault();
           onContinue();
         }
@@ -178,6 +191,7 @@ export function ExerciseView({
           <p className="text-sm text-muted">{title}</p>
           <p className="text-sm text-muted">{counter}</p>
         </div>
+        <SaveStatus status={saveStatus} />
         {peekWords ? (
           <button
             type="button"
@@ -203,6 +217,10 @@ export function ExerciseView({
           style={{ width: `${progressPercent}%` }}
         />
       </div>
+
+      {saveStatus === "failed" ? (
+        <SaveFailureBanner unsavedCount={unsavedCount} onRetry={onRetry} />
+      ) : null}
 
       <section className="mt-5 min-w-0 rounded-2xl border border-border bg-card p-5">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">
@@ -319,10 +337,11 @@ export function ExerciseView({
             answer={feedback.answer}
             formNote={feedback.formNote}
             word={word}
-            saveState={saveState}
+            saveStatus={saveStatus}
             finish={finish}
             finishLabel={finishLabel}
-            onRetry={onRetry}
+            isDrained={isDrained}
+            isBlocked={isBlocked}
             onContinue={onContinue}
           />
         ) : null}

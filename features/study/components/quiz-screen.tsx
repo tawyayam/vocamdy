@@ -13,8 +13,8 @@ import {
 } from "@/core/quiz";
 import type { Deck, Exercise, Progress, Word } from "@/core/types";
 import { submitExtraAttempt, submitIntroducedWord } from "../actions";
+import { useSaveQueue } from "../use-save-queue";
 import { ExerciseView, type ExerciseFeedback } from "./exercise-view";
-import type { QuizSaveState } from "./quiz-feedback";
 import { SessionEmpty } from "./session-empty";
 
 export type QuizFinishedResult = {
@@ -104,36 +104,14 @@ export function QuizScreen({
   const [selected, setSelected] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
   const [feedback, setFeedback] = useState<ExerciseFeedback | null>(null);
-  const [saveState, setSaveState] = useState<QuizSaveState>("idle");
-  const [pendingSave, setPendingSave] = useState<SavePayload | null>(null);
   const introducedRef = useRef(new Map<string, Progress>());
   const savedCountsRef = useRef({ answers: 0, newWords: 0 });
-
-  const exercise = round.exercise;
-  const word = round.word;
-  const finish = isQuizComplete(round.quiz);
-  const progressPercent =
-    words.length === 0
-      ? 0
-      : Math.round((round.quiz.correctWordIds.length / words.length) * 100);
-  const needsExitConfirmation =
-    saveState === "saving" || saveState === "failed";
-
-  async function saveAnswer(payload: SavePayload) {
-    setSaveState("saving");
-    setPendingSave(payload);
-
-    try {
-      const result =
-        payload.kind === "introduce"
-          ? await submitIntroducedWord(payload)
-          : await submitExtraAttempt(payload);
-
-      if (!result.ok) {
-        setSaveState("failed");
-        return;
-      }
-
+  const saveQueue = useSaveQueue<SavePayload>({
+    save: (payload) =>
+      payload.kind === "introduce"
+        ? submitIntroducedWord(payload)
+        : submitExtraAttempt(payload),
+    onSaved: (payload, result) => {
       if (!result.stale) {
         savedCountsRef.current = {
           answers: savedCountsRef.current.answers + 1,
@@ -146,14 +124,17 @@ export function QuizScreen({
       if (result.progress) {
         introducedRef.current.set(result.progress.wordId, result.progress);
       }
+    },
+  });
 
-      setSaveState("saved");
-      setPendingSave(null);
-    } catch (error) {
-      console.error("Could not save the quiz answer.", error);
-      setSaveState("failed");
-    }
-  }
+  const exercise = round.exercise;
+  const word = round.word;
+  const finish = isQuizComplete(round.quiz);
+  const progressPercent =
+    words.length === 0
+      ? 0
+      : Math.round((round.quiz.correctWordIds.length / words.length) * 100);
+  const needsExitConfirmation = !saveQueue.isDrained;
 
   function submitAnswer(value: string | null) {
     if (!exercise || !word || feedback) {
@@ -192,15 +173,19 @@ export function QuizScreen({
     setTyped(value ?? "");
     setFeedback({ correct, answer: exercise.answer, formNote });
     setRound({ ...round, quiz: answerQuiz(round.quiz, correct) });
-    void saveAnswer(payload);
+    saveQueue.enqueue(payload);
   }
 
   function continueQuiz() {
-    if (saveState !== "saved") {
+    if (saveQueue.isBlocked) {
       return;
     }
 
     if (isQuizComplete(round.quiz)) {
+      if (!saveQueue.isDrained) {
+        return;
+      }
+
       onFinished({
         wrongCounts: round.quiz.wrongCounts,
         introduced: [...introducedRef.current.values()],
@@ -213,15 +198,7 @@ export function QuizScreen({
     setSelected(null);
     setTyped("");
     setFeedback(null);
-    setSaveState("idle");
-    setPendingSave(null);
     setRound(makeRound(round.quiz, wordsById, deck, studyDay));
-  }
-
-  function retrySave() {
-    if (pendingSave) {
-      void saveAnswer(pendingSave);
-    }
   }
 
   if (!exercise || !word) {
@@ -243,14 +220,17 @@ export function QuizScreen({
       selected={selected}
       typed={typed}
       feedback={feedback}
-      saveState={saveState}
+      saveStatus={saveQueue.status}
+      unsavedCount={saveQueue.unsavedCount}
+      isDrained={saveQueue.isDrained}
+      isBlocked={saveQueue.isBlocked}
       finish={finish}
       needsExitConfirmation={needsExitConfirmation}
       peekWords={words}
       onTypedChange={setTyped}
       onSubmit={submitAnswer}
       onContinue={continueQuiz}
-      onRetry={retrySave}
+      onRetry={saveQueue.retry}
     />
   );
 }

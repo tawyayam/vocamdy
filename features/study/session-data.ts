@@ -21,6 +21,7 @@ export type SessionData = {
   };
   pool: SessionPoolWord[];
   candidates: Word[];
+  reviewWords: Word[];
   progress: Progress[];
   activities: Activity[];
   settings: Settings;
@@ -71,6 +72,7 @@ export async function loadSessionData(): Promise<SessionDataResult> {
   const unintroduced = deck.words
     .filter((word) => !introduced.has(word.id))
     .sort((first, second) => first.order - second.order);
+  const reviewWords = deck.words.filter((word) => introduced.has(word.id));
 
   return {
     status: "ready",
@@ -82,6 +84,7 @@ export async function loadSessionData(): Promise<SessionDataResult> {
       },
       pool: deck.words.map(toPoolWord),
       candidates: unintroduced.slice(0, settings.dailyNew + settings.batchSize),
+      reviewWords,
       progress,
       activities,
       settings,

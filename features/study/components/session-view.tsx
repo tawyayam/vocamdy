@@ -10,7 +10,7 @@ import {
   planNewBatch,
 } from "@/core/planner";
 import type { Completion, Deck, Progress, TodayState, Word } from "@/core/types";
-import { completeStudyDay, loadReviewWords } from "../actions";
+import { completeStudyDay } from "../actions";
 import type { SessionData } from "../session-data";
 import { BatchSummaryScreen } from "./batch-summary-screen";
 import {
@@ -24,7 +24,7 @@ import {
   type ReviewFinishedResult,
 } from "./review-screen";
 import { ReviewSummaryScreen } from "./review-summary-screen";
-import { SessionExit } from "./session-exit";
+import { SessionEmpty } from "./session-empty";
 import { SessionSkeleton } from "./session-skeleton";
 
 export type SessionMode = "full" | "mini";
@@ -41,8 +41,6 @@ type Phase =
   | "quiz"
   | "summary"
   | "completion";
-
-type ReviewLoadState = "idle" | "failed";
 
 function poolWordToWord(
   poolWord: SessionData["pool"][number],
@@ -139,10 +137,7 @@ export function SessionView({ data, mode }: SessionViewProps) {
   const [batchWords, setBatchWords] = useState<Word[] | null>(null);
   const [batchIsLastForDay, setBatchIsLastForDay] = useState(false);
   const [wrongCounts, setWrongCounts] = useState<Record<string, number>>({});
-  const [reviewWords, setReviewWords] = useState<Word[] | null>(null);
-  const [reviewLoadState, setReviewLoadState] =
-    useState<ReviewLoadState>("idle");
-  const [reviewLoadAttempt, setReviewLoadAttempt] = useState(0);
+  const reviewWords = initialData.reviewWords;
   const [reviewResult, setReviewResult] =
     useState<ReviewFinishedResult | null>(null);
   const [sessionCounts, setSessionCounts] = useState({
@@ -287,16 +282,20 @@ export function SessionView({ data, mode }: SessionViewProps) {
   const nextRequiredBatch = nextRequiredPlan?.nextBatch.words ?? [];
   const reviewCompletesDay = nextRequiredPlan?.completesDay ?? false;
   const reviewWordIds = useMemo(
-    () => new Set(reviewWords?.map((word) => word.id) ?? []),
+    () => new Set(reviewWords.map((word) => word.id)),
     [reviewWords],
   );
   const validReviews = useMemo(
     () => initialReviews.filter((review) => reviewWordIds.has(review.wordId)),
     [initialReviews, reviewWordIds],
   );
+  const validReviewWordIds = useMemo(
+    () => new Set(validReviews.map((review) => review.wordId)),
+    [validReviews],
+  );
   const reviewSummaryWords = useMemo(
-    () => reviewWords?.filter((word) => reviewWordIds.has(word.id)) ?? [],
-    [reviewWordIds, reviewWords],
+    () => reviewWords.filter((word) => validReviewWordIds.has(word.id)),
+    [reviewWords, validReviewWordIds],
   );
   const activeBatch = batchWords ?? initialBatch;
   const activeBatchIsLastForDay =
@@ -316,41 +315,6 @@ export function SessionView({ data, mode }: SessionViewProps) {
   const skipReview = initialReviews.length === 0;
   const activePhase: Phase =
     phase === "review" && skipReview ? "learn" : phase;
-
-  useEffect(() => {
-    if (!studyDay || initialReviews.length === 0) {
-      return;
-    }
-
-    let cancelled = false;
-
-    loadReviewWords(initialReviews.map((review) => review.wordId))
-      .then((result) => {
-        if (cancelled) {
-          return;
-        }
-
-        if (!result.ok) {
-          setReviewLoadState("failed");
-          return;
-        }
-
-        setReviewWords(result.words);
-        setReviewLoadState("idle");
-      })
-      .catch((error) => {
-        if (cancelled) {
-          return;
-        }
-
-        console.error("Could not load the review words.", error);
-        setReviewLoadState("failed");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [initialReviews, reviewLoadAttempt, studyDay]);
 
   useEffect(() => {
     if (notice) {
@@ -501,12 +465,6 @@ export function SessionView({ data, mode }: SessionViewProps) {
     void requestCompletion();
   }
 
-  function retryReviews() {
-    setReviewLoadState("idle");
-    setReviewWords(null);
-    setReviewLoadAttempt((current) => current + 1);
-  }
-
   async function stopForToday() {
     if (mode === "mini" || activeBatchIsLastForDay) {
       const nextState = await requestCompletion();
@@ -555,36 +513,13 @@ export function SessionView({ data, mode }: SessionViewProps) {
   }
 
   if (activePhase === "review") {
-    if (
-      reviewLoadState === "failed" ||
-      (reviewWords !== null && validReviews.length === 0)
-    ) {
+    if (validReviews.length === 0) {
       return (
-        <div className="mx-auto w-full max-w-[640px] px-4 py-6">
-          <header className="flex items-center gap-3">
-            <SessionExit />
-          </header>
-          <section className="mt-5 rounded-2xl border border-border bg-card p-5">
-            <h1 className="font-serif text-2xl font-semibold text-ink">
-              Couldn&apos;t load your reviews
-            </h1>
-            <p className="mt-2 text-sm text-muted">
-              Please try again before continuing.
-            </p>
-            <button
-              type="button"
-              onClick={retryReviews}
-              className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-primary px-5 py-3 font-medium text-on-primary transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              Try again
-            </button>
-          </section>
-        </div>
+        <SessionEmpty
+          title="Couldn't load your reviews"
+          description="Return to Today and start another session."
+        />
       );
-    }
-
-    if (!reviewWords) {
-      return <SessionSkeleton />;
     }
 
     return (

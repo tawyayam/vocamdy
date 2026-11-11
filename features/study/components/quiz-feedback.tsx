@@ -2,19 +2,19 @@
 
 import { CircleCheck, CircleX } from "lucide-react";
 import { useEffect, useRef } from "react";
+import type { SaveQueueStatus } from "@/core/save-queue";
 import type { Word } from "@/core/types";
-
-export type QuizSaveState = "idle" | "saving" | "saved" | "failed";
 
 type QuizFeedbackProps = {
   correct: boolean;
   answer: string;
   formNote: string | null;
   word: Word;
-  saveState: QuizSaveState;
+  saveStatus: SaveQueueStatus;
   finish: boolean;
   finishLabel?: string;
-  onRetry: () => void;
+  isDrained: boolean;
+  isBlocked: boolean;
   onContinue: () => void;
 };
 
@@ -23,19 +23,31 @@ export function QuizFeedback({
   answer,
   formNote,
   word,
-  saveState,
+  saveStatus,
   finish,
   finishLabel,
-  onRetry,
+  isDrained,
+  isBlocked,
   onContinue,
 }: QuizFeedbackProps) {
   const actionRef = useRef<HTMLButtonElement>(null);
+  const waitingToFinish = finish && !isDrained;
+  const blockedFromContinuing = !finish && isBlocked;
+  const actionLabel = finish
+    ? isDrained
+      ? (finishLabel ?? "Finish batch")
+      : saveStatus === "failed"
+        ? "Retry save to finish"
+        : "Saving..."
+    : isBlocked
+      ? "Retry to continue"
+      : "Continue";
 
   useEffect(() => {
-    if (saveState === "saved" || saveState === "failed") {
+    if (saveStatus === "saved" && isDrained) {
       actionRef.current?.focus();
     }
-  }, [saveState]);
+  }, [isDrained, saveStatus]);
 
   return (
     <div
@@ -96,30 +108,15 @@ export function QuizFeedback({
       ) : null}
 
       <div className="mt-4">
-        {saveState === "failed" ? (
-          <button
-            ref={actionRef}
-            type="button"
-            onClick={onRetry}
-            className="flex min-h-11 w-full items-center justify-center rounded-xl border border-warn/40 bg-card px-4 py-2 text-sm font-medium text-warn transition-colors hover:border-warn focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-warn"
-          >
-            Couldn&apos;t save, tap to retry
-          </button>
-        ) : (
-          <button
-            ref={actionRef}
-            type="button"
-            onClick={onContinue}
-            disabled={saveState !== "saved"}
-            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary/90 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            {saveState === "saved"
-              ? finish
-                ? (finishLabel ?? "Finish batch")
-                : "Continue"
-              : "Saving..."}
-          </button>
-        )}
+        <button
+          ref={actionRef}
+          type="button"
+          onClick={onContinue}
+          disabled={waitingToFinish || blockedFromContinuing}
+          className="flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary/90 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          {actionLabel}
+        </button>
       </div>
     </div>
   );

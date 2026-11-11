@@ -32,8 +32,6 @@ export async function getUserSettings(
   supabase: SupabaseServerClient,
   userId: string,
 ): Promise<Settings> {
-  await ensureUserSettings(supabase, userId);
-
   const { data, error } = await supabase
     .from("user_settings")
     .select("*")

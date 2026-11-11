@@ -15,8 +15,8 @@ import {
 } from "@/core/review-queue";
 import type { Deck, Exercise, Progress, Stage, Word } from "@/core/types";
 import { submitExtraAttempt, submitReviewAnswer } from "../actions";
+import { useSaveQueue } from "../use-save-queue";
 import { ExerciseView, type ExerciseFeedback } from "./exercise-view";
-import type { QuizSaveState } from "./quiz-feedback";
 import { SessionEmpty } from "./session-empty";
 
 export type ReviewFinishedResult = {
@@ -110,10 +110,25 @@ export function ReviewScreen({
   const [selected, setSelected] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
   const [feedback, setFeedback] = useState<ExerciseFeedback | null>(null);
-  const [saveState, setSaveState] = useState<QuizSaveState>("idle");
-  const [pendingSave, setPendingSave] = useState<SavePayload | null>(null);
   const progressRef = useRef(new Map<string, Progress>());
   const savedCountsRef = useRef({ answers: 0 });
+  const saveQueue = useSaveQueue<SavePayload>({
+    save: (payload) =>
+      payload.kind === "review"
+        ? submitReviewAnswer(payload)
+        : submitExtraAttempt(payload),
+    onSaved: (_payload, result) => {
+      if (!result.stale) {
+        savedCountsRef.current = {
+          answers: savedCountsRef.current.answers + 1,
+        };
+      }
+
+      if (result.progress) {
+        progressRef.current.set(result.progress.wordId, result.progress);
+      }
+    },
+  });
 
   const exercise = round.exercise;
   const word = round.word;
@@ -129,41 +144,7 @@ export function ReviewScreen({
       ? 0
       : Math.round((roundProgress.completed / roundProgress.total) * 100);
   const finish = isReviewBlockComplete(round.queue);
-  const needsExitConfirmation =
-    saveState === "saving" || saveState === "failed";
-
-  async function saveAnswer(payload: SavePayload) {
-    setSaveState("saving");
-    setPendingSave(payload);
-
-    try {
-      const result =
-        payload.kind === "review"
-          ? await submitReviewAnswer(payload)
-          : await submitExtraAttempt(payload);
-
-      if (!result.ok) {
-        setSaveState("failed");
-        return;
-      }
-
-      if (!result.stale) {
-        savedCountsRef.current = {
-          answers: savedCountsRef.current.answers + 1,
-        };
-      }
-
-      if (result.progress) {
-        progressRef.current.set(result.progress.wordId, result.progress);
-      }
-
-      setSaveState("saved");
-      setPendingSave(null);
-    } catch (error) {
-      console.error("Could not save the review answer.", error);
-      setSaveState("failed");
-    }
-  }
+  const needsExitConfirmation = !saveQueue.isDrained;
 
   function submitAnswer(value: string | null) {
     if (!exercise || !word || !round.item || feedback) {
@@ -204,15 +185,19 @@ export function ReviewScreen({
       ...round,
       queue: answerReviewQueue(round.queue, correct),
     });
-    void saveAnswer(payload);
+    saveQueue.enqueue(payload);
   }
 
   function continueReview() {
-    if (saveState !== "saved") {
+    if (saveQueue.isBlocked) {
       return;
     }
 
     if (isReviewBlockComplete(round.queue)) {
+      if (!saveQueue.isDrained) {
+        return;
+      }
+
       onFinished({
         wrongCounts: round.queue.wrongCounts,
         progress: [...progressRef.current.values()],
@@ -224,15 +209,7 @@ export function ReviewScreen({
     setSelected(null);
     setTyped("");
     setFeedback(null);
-    setSaveState("idle");
-    setPendingSave(null);
     setRound(makeRound(round.queue, wordsById, deck, studyDay));
-  }
-
-  function retrySave() {
-    if (pendingSave) {
-      void saveAnswer(pendingSave);
-    }
   }
 
   if (!exercise || !word) {
@@ -254,14 +231,17 @@ export function ReviewScreen({
       selected={selected}
       typed={typed}
       feedback={feedback}
-      saveState={saveState}
+      saveStatus={saveQueue.status}
+      unsavedCount={saveQueue.unsavedCount}
+      isDrained={saveQueue.isDrained}
+      isBlocked={saveQueue.isBlocked}
       finish={finish}
       finishLabel="Finish review"
       needsExitConfirmation={needsExitConfirmation}
       onTypedChange={setTyped}
       onSubmit={submitAnswer}
       onContinue={continueReview}
-      onRetry={retrySave}
+      onRetry={saveQueue.retry}
     />
   );
 }
