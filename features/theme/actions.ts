@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { createActionTiming } from "@/core/action-timing";
 import { themeSchema } from "@/core/schemas";
 import { createSupabaseServerClient } from "@/db/server";
 import {
@@ -16,9 +17,15 @@ export async function setTheme(
   _previous: ThemeActionResult | null,
   formData: FormData,
 ): Promise<ThemeActionResult> {
+  const timing = createActionTiming("setTheme");
+
   try {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.getClaims();
+    const supabase = await timing.measure("client", () =>
+      createSupabaseServerClient(),
+    );
+    const { data, error } = await timing.measure("claims", () =>
+      supabase.auth.getClaims(),
+    );
 
     if (error) {
       throw error;
@@ -50,5 +57,7 @@ export async function setTheme(
   } catch (error) {
     console.error("Could not save the theme.", error);
     return { ok: false, error: SAVE_ERROR };
+  } finally {
+    timing.log();
   }
 }

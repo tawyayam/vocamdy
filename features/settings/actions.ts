@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createActionTiming } from "@/core/action-timing";
 import { settingsInputSchema } from "@/core/schemas";
 import { createSupabaseServerClient } from "@/db/server";
 import { getUserSettings, saveUserSettings } from "@/db/settings";
@@ -22,9 +23,15 @@ export async function saveSettings(
   _previous: SettingsActionResult | null,
   formData: FormData,
 ): Promise<SettingsActionResult> {
+  const timing = createActionTiming("saveSettings");
+
   try {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.getClaims();
+    const supabase = await timing.measure("client", () =>
+      createSupabaseServerClient(),
+    );
+    const { data, error } = await timing.measure("claims", () =>
+      supabase.auth.getClaims(),
+    );
 
     if (error) {
       throw error;
@@ -36,7 +43,9 @@ export async function saveSettings(
       return { ok: false, error: SAVE_ERROR };
     }
 
-    const current = await getUserSettings(supabase, userId);
+    const current = await timing.measure("settingsRead", () =>
+      getUserSettings(supabase, userId),
+    );
     const parsed = settingsInputSchema.safeParse({
       activeDeckId: current.activeDeckId,
       dailyNew: numberField(formData, "dailyNew"),
@@ -48,7 +57,9 @@ export async function saveSettings(
       return { ok: false, error: SAVE_ERROR };
     }
 
-    await saveUserSettings(supabase, userId, parsed.data);
+    await timing.measure("settingsWrite", () =>
+      saveUserSettings(supabase, userId, parsed.data),
+    );
     revalidatePath("/");
     revalidatePath("/session");
     revalidatePath("/progress");
@@ -57,5 +68,7 @@ export async function saveSettings(
   } catch (error) {
     console.error("Could not save settings.", error);
     return { ok: false, error: SAVE_ERROR };
+  } finally {
+    timing.log();
   }
 }

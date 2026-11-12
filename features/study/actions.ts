@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getDeck } from "@/content/decks";
+import { createActionTiming, type ActionTiming } from "@/core/action-timing";
 import { answerInputForServerDay } from "@/core/schemas";
 import {
   answerReview,
@@ -29,9 +30,15 @@ type StudySession = {
   userId: string;
 };
 
-async function getStudySession(): Promise<StudySession | null> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getClaims();
+async function getStudySession(
+  timing: ActionTiming,
+): Promise<StudySession | null> {
+  const supabase = await timing.measure("client", () =>
+    createSupabaseServerClient(),
+  );
+  const { data, error } = await timing.measure("claims", () =>
+    supabase.auth.getClaims(),
+  );
 
   if (error) {
     throw error;
@@ -96,9 +103,12 @@ function recordCompletion(
 async function readActivityForAnswer(
   session: StudySession,
   studyDay: string,
+  timing: ActionTiming,
 ): Promise<Activity | null | undefined> {
   try {
-    return await getActivityForDay(session.supabase, session.userId, studyDay);
+    return await timing.measure("activityRead", () =>
+      getActivityForDay(session.supabase, session.userId, studyDay),
+    );
   } catch (error) {
     console.error("Could not read daily activity for an answer.", error);
     return undefined;
@@ -108,9 +118,12 @@ async function readActivityForAnswer(
 async function saveActivityBestEffort(
   session: StudySession,
   activity: Activity,
+  timing: ActionTiming,
 ): Promise<Activity | null> {
   try {
-    await saveActivity(session.supabase, session.userId, activity);
+    await timing.measure("activityWrite", () =>
+      saveActivity(session.supabase, session.userId, activity),
+    );
     return activity;
   } catch (error) {
     console.error("Could not save daily activity after progress.", error);
@@ -121,8 +134,11 @@ async function saveActivityBestEffort(
 async function getDeckAndWord(
   session: StudySession,
   wordId: string,
+  timing: ActionTiming,
 ): Promise<{ ok: true; deckId: string } | { ok: false; error: string }> {
-  const settings = await getUserSettings(session.supabase, session.userId);
+  const settings = await timing.measure("settings", () =>
+    getUserSettings(session.supabase, session.userId),
+  );
   const deck = getDeck(settings.activeDeckId);
 
   if (!deck) {
@@ -137,8 +153,10 @@ async function getDeckAndWord(
 }
 
 export async function submitReviewAnswer(raw: unknown): Promise<StudyActionResult> {
+  const timing = createActionTiming("submitReviewAnswer");
+
   try {
-    const session = await getStudySession();
+    const session = await getStudySession(timing);
 
     if (!session) {
       return { ok: false, error: AUTH_ERROR };
@@ -152,9 +170,11 @@ export async function submitReviewAnswer(raw: unknown): Promise<StudyActionResul
 
     const input = parsed.data;
     const [deckAndWord, stored, currentActivity] = await Promise.all([
-      getDeckAndWord(session, input.wordId),
-      getProgressForWord(session.supabase, session.userId, input.wordId),
-      readActivityForAnswer(session, input.studyDay),
+      getDeckAndWord(session, input.wordId, timing),
+      timing.measure("progressRead", () =>
+        getProgressForWord(session.supabase, session.userId, input.wordId),
+      ),
+      readActivityForAnswer(session, input.studyDay, timing),
     ]);
 
     if (!deckAndWord.ok) {
@@ -185,9 +205,11 @@ export async function submitReviewAnswer(raw: unknown): Promise<StudyActionResul
         : recordAnswer(currentActivity, input.studyDay, { review: true });
 
     const [, savedActivity] = await Promise.all([
-      saveProgress(session.supabase, session.userId, progress),
+      timing.measure("progressWrite", () =>
+        saveProgress(session.supabase, session.userId, progress),
+      ),
       activity
-        ? saveActivityBestEffort(session, activity)
+        ? saveActivityBestEffort(session, activity, timing)
         : Promise.resolve(null),
     ]);
 
@@ -195,14 +217,18 @@ export async function submitReviewAnswer(raw: unknown): Promise<StudyActionResul
   } catch (error) {
     console.error("Could not save the review answer.", error);
     return { ok: false, error: SAVE_ERROR };
+  } finally {
+    timing.log();
   }
 }
 
 export async function submitIntroducedWord(
   raw: unknown,
 ): Promise<StudyActionResult> {
+  const timing = createActionTiming("submitIntroducedWord");
+
   try {
-    const session = await getStudySession();
+    const session = await getStudySession(timing);
 
     if (!session) {
       return { ok: false, error: AUTH_ERROR };
@@ -216,9 +242,11 @@ export async function submitIntroducedWord(
 
     const input = parsed.data;
     const [deckAndWord, stored, currentActivity] = await Promise.all([
-      getDeckAndWord(session, input.wordId),
-      getProgressForWord(session.supabase, session.userId, input.wordId),
-      readActivityForAnswer(session, input.studyDay),
+      getDeckAndWord(session, input.wordId, timing),
+      timing.measure("progressRead", () =>
+        getProgressForWord(session.supabase, session.userId, input.wordId),
+      ),
+      readActivityForAnswer(session, input.studyDay, timing),
     ]);
 
     if (!deckAndWord.ok) {
@@ -241,9 +269,11 @@ export async function submitIntroducedWord(
         : recordAnswer(currentActivity, input.studyDay, { newWord: true });
 
     const [, savedActivity] = await Promise.all([
-      saveProgress(session.supabase, session.userId, progress),
+      timing.measure("progressWrite", () =>
+        saveProgress(session.supabase, session.userId, progress),
+      ),
       activity
-        ? saveActivityBestEffort(session, activity)
+        ? saveActivityBestEffort(session, activity, timing)
         : Promise.resolve(null),
     ]);
 
@@ -251,14 +281,18 @@ export async function submitIntroducedWord(
   } catch (error) {
     console.error("Could not save the introduced word.", error);
     return { ok: false, error: SAVE_ERROR };
+  } finally {
+    timing.log();
   }
 }
 
 export async function submitExtraAttempt(
   raw: unknown,
 ): Promise<StudyActionResult> {
+  const timing = createActionTiming("submitExtraAttempt");
+
   try {
-    const session = await getStudySession();
+    const session = await getStudySession(timing);
 
     if (!session) {
       return { ok: false, error: AUTH_ERROR };
@@ -272,8 +306,10 @@ export async function submitExtraAttempt(
 
     const input = parsed.data;
     const [deckAndWord, currentActivity] = await Promise.all([
-      getDeckAndWord(session, input.wordId),
-      getActivityForDay(session.supabase, session.userId, input.studyDay),
+      getDeckAndWord(session, input.wordId, timing),
+      timing.measure("activityRead", () =>
+        getActivityForDay(session.supabase, session.userId, input.studyDay),
+      ),
     ]);
 
     if (!deckAndWord.ok) {
@@ -282,20 +318,26 @@ export async function submitExtraAttempt(
 
     const activity = recordAnswer(currentActivity, input.studyDay);
 
-    await saveActivity(session.supabase, session.userId, activity);
+    await timing.measure("activityWrite", () =>
+      saveActivity(session.supabase, session.userId, activity),
+    );
 
     return { ok: true, stale: false, progress: null, activity };
   } catch (error) {
     console.error("Could not save the extra attempt.", error);
     return { ok: false, error: SAVE_ERROR };
+  } finally {
+    timing.log();
   }
 }
 
 export async function completeStudyDay(
   raw: unknown,
 ): Promise<CompletionActionResult> {
+  const timing = createActionTiming("completeStudyDay");
+
   try {
-    const session = await getStudySession();
+    const session = await getStudySession(timing);
 
     if (!session) {
       return { ok: false, error: AUTH_ERROR };
@@ -308,10 +350,8 @@ export async function completeStudyDay(
     }
 
     const input = parsed.data;
-    const currentActivity = await getActivityForDay(
-      session.supabase,
-      session.userId,
-      input.studyDay,
+    const currentActivity = await timing.measure("activityRead", () =>
+      getActivityForDay(session.supabase, session.userId, input.studyDay),
     );
     const activity = recordCompletion(
       currentActivity,
@@ -319,12 +359,16 @@ export async function completeStudyDay(
       input.completion,
     );
 
-    await saveActivity(session.supabase, session.userId, activity);
+    await timing.measure("activityWrite", () =>
+      saveActivity(session.supabase, session.userId, activity),
+    );
     revalidateProgressScreens();
 
     return { ok: true, activity };
   } catch (error) {
     console.error("Could not save the day completion.", error);
     return { ok: false, error: SAVE_ERROR };
+  } finally {
+    timing.log();
   }
 }
