@@ -5,7 +5,7 @@ import { toSettings, toSettingsRow } from "./mappers";
 
 type SupabaseServerClient = SupabaseClient<Database, "public">;
 
-const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: Settings = {
   activeDeckId: "awl",
   dailyNew: 10,
   batchSize: 5,

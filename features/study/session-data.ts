@@ -1,9 +1,7 @@
 import { getDeck } from "@/content/decks";
 import type { Activity, Group, Progress, Settings, Word } from "@/core/types";
-import { getRecentActivity } from "@/db/activity";
-import { getProgressForDeck } from "@/db/progress";
 import { createSupabaseServerClient } from "@/db/server";
-import { getUserSettings } from "@/db/settings";
+import { getStudyData } from "@/db/study-data";
 
 export type SessionPoolWord = {
   id: string;
@@ -57,17 +55,13 @@ export async function loadSessionData(): Promise<SessionDataResult> {
     return { status: "unauthenticated" };
   }
 
-  const settings = await getUserSettings(supabase, userId);
+  const { settings, progress, activities } = await getStudyData(supabase);
   const deck = getDeck(settings.activeDeckId);
 
   if (!deck) {
     return { status: "deck-missing" };
   }
 
-  const [progress, activities] = await Promise.all([
-    getProgressForDeck(supabase, userId, deck.id),
-    getRecentActivity(supabase, userId),
-  ]);
   const introduced = new Set(progress.map((item) => item.wordId));
   const unintroduced = deck.words
     .filter((word) => !introduced.has(word.id))

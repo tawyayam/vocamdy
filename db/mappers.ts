@@ -14,6 +14,33 @@ type ActivityInsert = Database["public"]["Tables"]["daily_activity"]["Insert"];
 type SettingsRow = Database["public"]["Tables"]["user_settings"]["Row"];
 type SettingsInsert = Database["public"]["Tables"]["user_settings"]["Insert"];
 
+type ProgressShape = Pick<
+  ProgressRow,
+  | "word_id"
+  | "deck_id"
+  | "stage"
+  | "due_date"
+  | "introduced_on"
+  | "graduated_on"
+  | "correct_count"
+  | "wrong_count"
+  | "last_answered_on"
+>;
+
+type ActivityShape = Pick<
+  ActivityRow,
+  | "study_day"
+  | "answers_count"
+  | "new_words_count"
+  | "reviews_count"
+  | "completed"
+>;
+
+type SettingsShape = Pick<
+  SettingsRow,
+  "active_deck_id" | "daily_new" | "batch_size" | "backlog_cap"
+>;
+
 function toStage(value: number): Stage {
   if (value === 1 || value === 2 || value === 3 || value === 4) {
     return value;
@@ -30,7 +57,7 @@ function toCompletion(value: string | null): Completion | null {
   throw new Error(`Invalid completion value: ${value}`);
 }
 
-export function toProgress(row: ProgressRow): Progress {
+export function toProgress(row: ProgressShape): Progress {
   return {
     wordId: row.word_id,
     deckId: row.deck_id,
@@ -59,7 +86,7 @@ export function toProgressRow(progress: Progress, userId: string): ProgressInser
   };
 }
 
-export function toActivity(row: ActivityRow): Activity {
+export function toActivity(row: ActivityShape): Activity {
   return {
     studyDay: row.study_day,
     answersCount: row.answers_count,
@@ -80,7 +107,7 @@ export function toActivityRow(activity: Activity, userId: string): ActivityInser
   };
 }
 
-export function toSettings(row: SettingsRow): Settings {
+export function toSettings(row: SettingsShape): Settings {
   return {
     activeDeckId: row.active_deck_id,
     dailyNew: row.daily_new,
